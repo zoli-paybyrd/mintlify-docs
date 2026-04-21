@@ -1,0 +1,137 @@
+---
+title: "Paybyrd Payment SDK for Android POS on PAX devices"
+description: "Use the Paybyrd Payment SDK for Android on PAX devices to charge, pre-authorize, refund, and query transactions from your own app."
+---
+
+The Paybyrd Payment SDK lets Android applications running on PAX POS devices trigger payment operations through the Paybyrd Payment App installed on the same device. Communication uses the standard Android `startActivityForResult` model, so your app launches a payment Intent and receives the result back in `onActivityResult`. A JavaScript SDK is also available for apps built as progressive web apps inside an Android WebView.
+
+## Current versions
+
+| Component | Version | Requires |
+|---|---|---|
+| Native SDK | `0.0.10` | Paybyrd Payment App 3.1.0 or later |
+| JavaScript SDK | `0.0.2` | Android WebView |
+
+## Get the SDK
+
+The SDK is distributed as a `.aar` Android library file written in Kotlin. Contact your Paybyrd Account Manager to receive the package.
+
+## Supported operations
+
+- **CHARGE** — process a standard card payment
+- **PREAUTHORIZE** — reserve funds without capturing them
+- **CAPTURE** — settle a previously pre-authorized amount (full or partial)
+- **REFUND** — return funds to a customer (full or partial)
+- **QUERY** — synchronously check the status of a transaction
+
+---
+
+## Initialize and provision the app
+
+On first run, configure the Paybyrd Payment App with your merchant credentials. Create an `InitiateRequest` and dispatch it before making any payment calls:
+
+```kotlin
+val initRequest = InitiateRequest(
+    email = serviceCredentialEmail,
+    password = serviceCredentialPassword,
+    merchantIdentifier = merchantIdentifier,
+    forceInit = false
+)
+```
+
+Set `forceInit = true` if you need to force re-initialization even when credentials are already stored on the device.
+
+---
+
+## Process a payment
+
+Build a `TransactionRequest` with the amount, currency, and transaction type, then start the payment Intent:
+
+```kotlin
+val transactionRequest = TransactionRequest(
+    amount = inputAmount.toLong(),
+    currency = TransactionCurrencyEnum.EUR,
+    transactionType = TransactionTypeEnum.CHARGE
+)
+
+val transactionData = PaybyrdPaymentSDK.createTransactionData(context, transactionRequest)
+startActivityForResult(transactionData.transactionIntent, PaybyrdPaymentSDK.PAYMENT_REQUEST_CODE)
+```
+
+### Handle the response
+
+Override `onActivityResult` to receive the payment outcome:
+
+```kotlin
+override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    super.onActivityResult(requestCode, resultCode, data)
+
+    if (requestCode == PaybyrdPaymentSDK.PAYMENT_REQUEST_CODE) {
+        val response = PaybyrdPaymentSDK.unpackTransactionResponseData(data?.extras!!)
+
+        if (resultCode == PaybyrdPaymentSDK.RESULT_CODE_APPROVED) {
+            // Payment approved — use response.transactionIdentifier for downstream operations
+        } else {
+            // Check response.errorCode and response.transactionStatus for the failure reason
+        }
+    }
+}
+```
+
+Store `response.transactionIdentifier` — you need it for refunds, captures, and queries.
+
+---
+
+## Pre-authorization and capture
+
+To reserve funds without capturing them, use `TransactionTypeEnum.PREAUTHORIZE`:
+
+```kotlin
+val transactionRequest = TransactionRequest(
+    amount = inputAmount.toLong(),
+    currency = TransactionCurrencyEnum.EUR,
+    transactionType = TransactionTypeEnum.PREAUTHORIZE
+)
+```
+
+When you are ready to capture the funds, create a new `TransactionRequest` with `TransactionTypeEnum.CAPTURE` and pass the original transaction's identifier in `referencedTransactionIdentifier`. Partial captures are supported — set `amount` to the amount you want to capture.
+
+---
+
+## Refund a transaction
+
+To refund a payment, set the transaction type to `REFUND` and reference the original charge:
+
+```kotlin
+val transactionRequest = TransactionRequest(
+    amount = refundAmount.toLong(),
+    currency = TransactionCurrencyEnum.EUR,
+    transactionType = TransactionTypeEnum.REFUND,
+    referencedTransactionIdentifier = ORIGINAL_CHARGE_IDENTIFIER
+)
+```
+
+Both full and partial refunds are supported. For a partial refund, set `amount` to the amount you want to return.
+
+---
+
+## Query a transaction
+
+Use the query operation to check the current status of a transaction. This is especially useful when `onActivityResult` returns an `UNKNOWN` status — for example after a network interruption:
+
+```kotlin
+val queryResult = PaybyrdPaymentSDK.queryTransaction(
+    requireContext(),
+    QueryTransactionRequest(transactionIdentifier = TRANSACTION_ID)
+)
+```
+
+<Note>
+  `queryTransaction` is a **synchronous** call. Call it from a background thread to avoid blocking the main UI thread.
+</Note>
+
+---
+
+## JavaScript SDK for WebView apps
+
+If your POS application is a progressive web app running inside an Android WebView, the JavaScript SDK provides feature parity with the native SDK at version `0.0.10`. Contact your Paybyrd Account Manager to receive the JavaScript SDK package.

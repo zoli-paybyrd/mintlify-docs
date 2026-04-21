@@ -1,0 +1,81 @@
+---
+title: "Add Paybyrd payments to your nopCommerce store"
+description: "Install and configure the Paybyrd payment plugin on nopCommerce to accept card and alternative payment methods securely at checkout."
+---
+
+nopCommerce is an open-source e-commerce platform built on .NET Core. It provides a full-featured foundation for online stores, including catalog management, order processing, and a plugin-based architecture for extending functionality. The Paybyrd nopCommerce plugin embeds Paybyrd's payment methods directly into the checkout experience with a straightforward installation and configuration process.
+
+## Requirements
+
+Before you install the plugin, make sure you have:
+
+- nopCommerce installed and running in a production or staging environment.
+- A Paybyrd account with both a Test Private Key and a Live Private Key.
+- A public domain for your store. Order status updates rely on asynchronous webhook calls, which require a publicly accessible URL.
+
+## Download the plugin
+
+You can get the plugin in two ways:
+
+<Tabs>
+  <Tab title="nopCommerce marketplace">
+    1. Visit the Paybyrd plugin page on the nopCommerce marketplace.
+    2. Select **Get Extension** to download the plugin as a ZIP archive.
+  </Tab>
+  <Tab title="Admin Dashboard">
+    1. Open the nopCommerce Admin Dashboard.
+    2. Navigate to **Configuration → Local Plugins**.
+    3. Search for **Paybyrd** and click **Download**.
+
+    The plugin downloads as a ZIP archive.
+  </Tab>
+</Tabs>
+
+## Install the plugin
+
+<Steps>
+  <Step title="Upload the plugin archive">
+    In the nopCommerce Admin Dashboard, go to **Configuration → Local Plugins** and select **Upload plugin or theme**. Choose the ZIP archive you downloaded.
+  </Step>
+  <Step title="Reload the plugin list">
+    Select **Reload list of plugins** to refresh the page, then find the Paybyrd plugin in the list.
+  </Step>
+  <Step title="Install and activate">
+    Click **Install**, then activate the plugin to make it available as a payment method at checkout.
+  </Step>
+</Steps>
+
+<Note>
+  For more details on installing nopCommerce plugins, refer to the [nopCommerce documentation](https://docs.nopcommerce.com).
+</Note>
+
+## Configure the plugin
+
+<Steps>
+  <Step title="Open Payment methods">
+    In the Admin Dashboard, navigate to **Configuration → Payment methods**.
+  </Step>
+  <Step title="Open Paybyrd settings">
+    Find **Paybyrd** in the list and click **Configure**.
+  </Step>
+  <Step title="Enter your API keys">
+    Set the following fields:
+
+    | Setting | Description |
+    |---|---|
+    | **Live Private Key** | Your production API key. Required for live transactions. |
+    | **Test Private Key** | Your sandbox API key. Used when Test Mode is enabled. |
+    | **Test Mode** | Enable to route all payments through Paybyrd's sandbox for testing purposes. |
+  </Step>
+  <Step title="Save your settings">
+    Save your configuration. Paybyrd will register the necessary webhook endpoints to deliver real-time payment status updates to your store.
+  </Step>
+</Steps>
+
+## Test your integration
+
+Enable **Test Mode** and use your **Test Private Key** to process test transactions through Paybyrd's sandbox. When you are ready to accept real payments, disable Test Mode and confirm your **Live Private Key** is set correctly.
+
+<Warning>
+  Make sure your store is accessible at a public URL before testing. Webhook notifications from Paybyrd cannot reach a locally hosted store, which means order statuses will not update automatically.
+</Warning>

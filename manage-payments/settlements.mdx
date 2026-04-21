@@ -1,0 +1,150 @@
+---
+title: "Download settlement files and reconcile payouts"
+description: "Retrieve Paybyrd daily settlement CSV files via the Settlement API to reconcile your payouts, and separately download refunds-before-clearing records."
+---
+
+Paybyrd settles funds on a daily cycle. At the end of each processing day, Paybyrd generates one or more settlement files that list every transaction included in that payout. You download these files via the Settlement API and use them to reconcile payments against your own records. If a refund was issued before a transaction cleared with the acquirer, it appears in a separate **Refunds Before Clearing** file rather than the standard settlement file.
+
+## Settlement files
+
+### Retrieve settlement files
+
+Call `GET https://settlements.paybyrd.com/api/v1/files` with `createdFrom` and `createdTo` query parameters to list all settlement files generated in that period. Authenticate with your `x-api-key` header.
+
+**Retrieve files for a specific day**
+
+```bash
+curl --location --request GET \
+  'https://settlements.paybyrd.com/api/v1/files?createdFrom=2022-11-18T00:00:00&createdTo=2022-11-18T23:59:59' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+**Retrieve files across a date range**
+
+```bash
+curl --location --request GET \
+  'https://settlements.paybyrd.com/api/v1/files?createdFrom=2022-12-13T00:00:00&createdTo=2022-12-16T23:59:59' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+### File list response
+
+A successful response contains a `data` array. Each item represents one settlement file.
+
+```json
+{
+  "data": [
+    {
+      "checksum": "8a5d4f748b9795d4e5b562ef9ed9f12dc5c2444cb7852ce9f29b8c7a97dfa18c",
+      "createdAt": "2022-12-28T17:04:46Z",
+      "groupId": "07b52763-6268-4ad5-82de-2b6db4bc0aad",
+      "id": "e8be2832-83fe-46a6-88ce-eb7069305209",
+      "url": "https://paybyrd-settlements.blob.core.windows.net/files/..."
+    }
+  ]
+}
+```
+
+<ResponseField name="id" type="string (GUID)">
+  Unique identifier for this settlement file within Paybyrd.
+</ResponseField>
+
+<ResponseField name="groupId" type="string">
+  Your merchant group identifier. Used to match the file to your account when you have multiple merchant configurations.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string (ISO 8601)">
+  UTC timestamp when Paybyrd generated the file.
+</ResponseField>
+
+<ResponseField name="checksum" type="string">
+  MD5 hash of the file contents, expressed as a hexadecimal string. Verify this after downloading to confirm the file was not corrupted in transit.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Pre-signed URL to download the settlement CSV file directly.
+</ResponseField>
+
+### Error responses
+
+| HTTP status | Code | Meaning |
+|-------------|------|---------|
+| `404` | `BYRD901` | No settlement files found for the requested period. |
+| `400` | `BYRD900` | Invalid date format in `createdFrom` or `createdTo`. |
+| `500` | `BYRD999` | Internal server error — retry the request. |
+
+### File format
+
+Settlement files are CSV files using `|` (pipe) as the column separator. The filename follows this pattern:
+
+```
+yyyy-MM-ddThh-mm-ssZ-PaybyrdSettlement.csv
+```
+
+For example: `2022-11-18T16-49-58Z-PaybyrdSettlement.csv`
+
+### Billing events
+
+Some acquirer agreements include charges billed directly at payout time. These appear in the settlement file as **billing event** rows, where `SETTLEMENT_TYPE` is `"B"`. The `BILLING_DESCRIPTION` field explains the charge type. Transaction-level fields are empty on these rows — only the following fields carry values:
+
+- `PAYMENT_REFERENCE`
+- `GROUP_ID`
+- `IBAN`
+- `SWIFT`
+- `SETTLEMENT_AMOUNT`
+- `SETTLEMENT_TOTAL_FEE_AMOUNT` (always `0` for billing events)
+- `SETTLEMENT_CURRENCY`
+- `ACQUIRER_PERCENTAGE_FEE` (always `0` for billing events)
+- `ACQUIRER_FEE` (always `0` for billing events)
+
+## Usage recommendations
+
+<Steps>
+  <Step title="Poll daily">
+    Run an automated job once per day. Use the previous day's `createdTo` timestamp as the `createdFrom` for each new request to ensure no files are missed.
+  </Step>
+  <Step title="Check for multiple files">
+    Paybyrd normally generates one file per day, but may generate more than one. All files for the same day are complementary — process every file in the `data` array to get the complete settlement picture.
+  </Step>
+  <Step title="Verify the checksum">
+    After downloading each file, compute the MD5 hash of the file bytes and compare it against the `checksum` field to confirm file integrity.
+  </Step>
+</Steps>
+
+## Refunds before clearing
+
+When you refund a transaction before the acquirer has cleared it, Paybyrd records that refund in a separate **Refunds Before Clearing** file. These transactions did not generate fees, so they are excluded from the standard settlement file to keep your fee reconciliation accurate.
+
+### Retrieve refunds-before-clearing files
+
+Call `GET https://settlements.paybyrd.com/api/v1/authorization-files` with the same `createdFrom` and `createdTo` parameters.
+
+**Retrieve for a specific day**
+
+```bash
+curl --location --request GET \
+  'https://settlements.paybyrd.com/api/v1/authorization-files?createdFrom=2023-11-27T00:00:00&createdTo=2023-11-27T23:59:59' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+**Example response**
+
+```json
+{
+  "data": [
+    {
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e",
+      "createdAt": "2023-11-27T01:00:00Z",
+      "groupId": 2678,
+      "id": "34a815e7-40b3-4936-b689-70984ec7ad4e",
+      "url": "https://paybyrd-settlements.blob.core.windows.net/authorizations-paybyrd/..."
+    }
+  ]
+}
+```
+
+The response fields are identical to those in the standard settlement file list. The same daily polling pattern and multi-file handling recommendations apply.
+
+<Warning>
+  For complete reconciliation, you must retrieve **both** the standard settlement files and the refunds-before-clearing files. Relying only on settlement files will give you an incomplete view if any refunds were issued before clearing.
+</Warning>

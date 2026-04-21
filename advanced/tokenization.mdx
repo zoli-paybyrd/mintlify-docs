@@ -1,0 +1,94 @@
+---
+title: "Save cards for recurring and one-click payments"
+description: "Tokenization replaces sensitive card data with a reusable token so you can charge customers again without storing raw card numbers."
+---
+
+Tokenization lets you collect a customer's card once and store a secure token in its place. On future payments — subscriptions, one-click checkouts, or recurring charges — you pass the token instead of the full card details, keeping raw card numbers off your servers entirely.
+
+## How it works
+
+When a customer pays for the first time, Paybyrd processes their card and returns a `tokenId` (or links the card to a `customReference` you choose). Every subsequent payment uses that identifier instead of the card number, expiry, and CVV.
+
+## Three ways to tokenize
+
+### 1. Server-side tokenization
+
+Call `POST /api/v2/tokens` directly from your backend, passing the raw card data. Paybyrd returns a `tokenId` you can store and reuse.
+
+<Note>
+  Always tokenize from your backend. Never send raw card data through client-side JavaScript — doing so exposes cardholder data and violates PCI DSS requirements.
+</Note>
+
+<Steps>
+  <Step title="Send card data to the tokens endpoint">
+    Call `POST /api/v2/tokens` with the card object from your server:
+
+    ```bash
+    curl --request POST \
+      --url https://gateway.paybyrd.com/api/v2/tokens \
+      --header 'Accept: application/json' \
+      --header 'Content-Type: application/json' \
+      --header 'x-api-key: YOUR_API_KEY_HERE' \
+      --data '{
+        "card": {
+          "number": "4111111111111111",
+          "expiration": "12/30",
+          "cvv": "123",
+          "holder": "Jane Doe"
+        }
+      }'
+    ```
+  </Step>
+
+  <Step title="Store the returned tokenId">
+    Paybyrd responds with a `tokenId`. Save this value in your database against the customer record. You never need to handle the raw card number again.
+  </Step>
+
+  <Step title="Use the tokenId for future payments">
+    On subsequent charges, pass `tokenId` in the `card` object of your payment request. See [Using a token for payment](#using-a-token-for-payment) below.
+  </Step>
+</Steps>
+
+### 2. Client-side tokenization with Card Collect
+
+Embed the [Card Collect](/embed/card-collect) widget on your checkout page. Card Collect renders card fields inside a PCI-compliant iframe — your JavaScript never touches the raw numbers. When the customer submits the form, Card Collect returns a `tokenId` that you forward to your backend for storage and use.
+
+### 3. Hosted checkout tokenization
+
+When you create an order using the [Checkout](/embed/hosted-checkout), include `tokenOptions.customReference` in the request body. The hosted checkout page shows the customer a consent checkbox to save their card. Once the customer authorizes it, Paybyrd binds the card to your `customReference` and notifies your server via webhook.
+
+## Using a token for payment
+
+Once you have a `tokenId`, include it in the `card` object of any payment request:
+
+```json
+{
+  "type": "Card",
+  "isoAmount": 1000,
+  "currency": "EUR",
+  "orderRef": "ORDER-001",
+  "card": {
+    "tokenId": "ecf4a873-59fd-4300-a6e6-330d267ebbb2"
+  }
+}
+```
+
+If you used a hosted checkout with a `customReference`, use that instead:
+
+```json
+{
+  "type": "Card",
+  "isoAmount": 1000,
+  "currency": "EUR",
+  "orderRef": "ORDER-001",
+  "card": {
+    "customReference": "CUSTOMER-42"
+  }
+}
+```
+
+## Security considerations
+
+- **Tokens are scoped to your API key.** A token created under your key cannot be used by any other merchant.
+- **CVV is never stored.** Paybyrd does not retain the CVV after tokenization, and subsequent tokenized payments do not require it (subject to payment method rules).
+- **3DS may still apply.** Depending on the issuer and transaction risk score, a tokenized payment can still trigger a 3DS authentication challenge.

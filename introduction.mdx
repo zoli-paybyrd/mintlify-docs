@@ -1,0 +1,61 @@
+---
+title: "Paybyrd: Omnichannel Payments API Platform"
+description: "Accept card, digital wallet, bank transfer, and in-store payments through a single REST API. PCI-compliant and built for both e-commerce and POS."
+---
+
+Paybyrd is an omnichannel payments platform that gives merchants and developers a unified REST API to process payments across digital and physical channels. Whether you're building an online checkout, embedding a payment form, or integrating with a POS terminal, Paybyrd provides consistent APIs, pre-built UI components, and ready-made e-commerce plugins to get you accepting payments quickly.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/get-started/credentials">
+    Get your API keys and make your first payment request in minutes.
+  </Card>
+  <Card title="Accept Payments" icon="credit-card" href="/accept-payments/overview">
+    Explore all supported payment methods: cards, wallets, bank transfers, and BNPL.
+  </Card>
+  <Card title="Embed Paybyrd" icon="code" href="/embed/hosted-checkout">
+    Add a hosted checkout, card collect widget, or pay-by-link to your app.
+  </Card>
+  <Card title="Integrations" icon="plug" href="/integrations/woocommerce">
+    Connect Paybyrd to WooCommerce, Magento, NopCommerce, or POS hardware.
+  </Card>
+</CardGroup>
+
+## How it works
+
+<Steps>
+  <Step title="Get your credentials">
+    Contact your Paybyrd Account Manager or the sales team to receive sandbox API keys. Use the sandbox to build and test without affecting real transactions.
+  </Step>
+  <Step title="Make your first payment">
+    Send a `POST` request to `/api/v2/payment` with your API key in the `x-api-key` header. Pass the payment type, amount, currency, and your order reference.
+  </Step>
+  <Step title="Handle the response">
+    Most payments return an `action.url` for customer redirect (e.g., 3DS authentication). Redirect your customer, then use the returned `transactionId` to query the final status.
+  </Step>
+  <Step title="Set up webhooks">
+    Register a webhook endpoint to receive real-time notifications when payment status changes, so you never need to poll for updates.
+  </Step>
+</Steps>
+
+## Key capabilities
+
+<CardGroup cols={2}>
+  <Card title="All payment methods" icon="wallet" href="/accept-payments/overview">
+    Cards, Apple Pay, PayPal, iDEAL, SEPA, Multibanco, Klarna, and more — all through the same `/api/v2/payment` endpoint.
+  </Card>
+  <Card title="Manage transactions" icon="arrows-rotate" href="/manage-payments/query-transactions">
+    Query, capture, refund, adjust, and release payments through the lifecycle API.
+  </Card>
+  <Card title="Tokenization" icon="shield" href="/advanced/tokenization">
+    Save cards securely for one-click and recurring payments without storing raw card data.
+  </Card>
+  <Card title="3D Secure" icon="lock" href="/advanced/3ds-authentication">
+    Built-in 3DS v2 support — Paybyrd handles authentication and redirection automatically.
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/advanced/webhooks">
+    Get notified instantly when payment status changes with Paybyrd's webhook system.
+  </Card>
+  <Card title="POS & Android SDK" icon="mobile" href="/integrations/payment-sdk-android">
+    Accept in-person payments on PAX terminals using the Paybyrd Android Payment SDK.
+  </Card>
+</CardGroup>

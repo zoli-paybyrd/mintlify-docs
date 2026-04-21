@@ -1,0 +1,104 @@
+---
+title: "Paybyrd POS terminals: setup and daily operations"
+description: "Explore the PAX terminal hardware supported by Paybyrd and learn how to set up and operate in-person payments at your point of sale."
+---
+
+Paybyrd supports a range of PAX Android-based POS terminals for in-person payments. Each terminal runs the Paybyrd POS application, which handles payments, pre-authorizations, refunds, and reporting directly from the device. Choose the terminal that best fits your business environment and follow the steps below to get started.
+
+## Supported terminal models
+
+<CardGroup cols={2}>
+  <Card title="PAX A920" icon="mobile">
+    A sleek, compact smart POS terminal combining full Android tablet functionality with a large HD touchscreen. The 5250 mAh Li-ion battery supports continuous all-day operation. Supports NFC for contactless payments and NFC/RFID cards including MIFARE and custom tags.
+  </Card>
+  <Card title="PAX A920 Pro" icon="mobile-screen">
+    The A920 Pro packs the fastest available processor with a 5.5-inch HD touchscreen. It runs complex applications under the highest levels of built-in payment security and provides ample screen real estate for displaying logos, ads, and video content.
+  </Card>
+  <Card title="PAX A77" icon="hand-holding">
+    A palm-sized payment smartphone built for merchants who need portability. The A77 offers an all-day battery and integrates seamlessly into a wide range of business environments.
+  </Card>
+  <Card title="PAX IM30" icon="desktop">
+    A rugged, unattended terminal designed for kiosks and vending machines. The IM30 combines Android flexibility with environmental durability, making it suitable for self-service deployments.
+  </Card>
+</CardGroup>
+
+## Set up the Paybyrd POS application
+
+The Paybyrd POS application comes pre-installed on Paybyrd-provisioned terminals. Follow these steps the first time you power on a device.
+
+<Steps>
+  <Step title="Log in">
+    Open the Paybyrd POS app and log in with your Paybyrd dashboard credentials (email and password). Tap the eye icon to reveal your password if needed. If your credentials are incorrect, the app shows an error at the bottom of the screen.
+  </Step>
+  <Step title="Select your merchant">
+    After login, the app retrieves the merchant data linked to your account. If your account is associated with more than one merchant, select the one you want to use on this terminal.
+  </Step>
+  <Step title="Wait for initialization">
+    The app initializes the payment module and downloads the required configuration. This happens automatically. If initialization fails, tap **Try again**.
+  </Step>
+</Steps>
+
+## Process a payment
+
+<Steps>
+  <Step title="Open the Payment section">
+    From the main menu, select **Payment**.
+  </Step>
+  <Step title="Enter the amount">
+    Type the amount to charge the customer.
+  </Step>
+  <Step title="Present the card">
+    Ask the customer to insert, swipe, or tap their card. The terminal processes the payment and displays the result.
+  </Step>
+  <Step title="Handle the receipt">
+    After approval, you can send a digital receipt, print a customer receipt, print a merchant receipt, or close the transaction screen.
+  </Step>
+</Steps>
+
+## Pre-authorization and capture
+
+Pre-authorization reserves funds on a customer's card without immediately capturing them—useful for hotels, car rentals, and other scenarios where the final amount is confirmed later.
+
+<Steps>
+  <Step title="Start a pre-authorization">
+    From the menu, select **PreAuthorization** and follow the on-screen prompts to reserve the funds.
+  </Step>
+  <Step title="Capture the reserved amount">
+    When you are ready to finalize the charge, open the pre-authorization and select **Capture** for the full amount or **Partial Capture** for a reduced amount.
+  </Step>
+</Steps>
+
+## Process a refund
+
+<Steps>
+  <Step title="Open the Refund section">
+    From the menu, select **Refund**, then choose **Complete** for a full refund or enter a specific amount for a partial refund.
+
+    <Note>
+      Partial refunds are available for standard payments only. Pre-authorization captures cannot be partially refunded.
+    </Note>
+  </Step>
+  <Step title="Enter the operational password">
+    If your merchant configuration requires it, enter the operational password when prompted.
+  </Step>
+  <Step title="Confirm the refund">
+    Tap **Refund** to process. The terminal confirms the result.
+  </Step>
+</Steps>
+
+## View reports
+
+From the main menu, select **Reports** to view transaction summaries for today, yesterday, and the day before yesterday. The available report types are:
+
+- Payment
+- Payment of Reservation (Capture of Pre-authorization)
+- Refund of Payment
+- Refund of Payment of Reservation
+- Pay by Link Payment
+- Transaction Reports Receipt
+
+Select **Reprint** to reprint a receipt for any previous transaction.
+
+## Pay by Link
+
+From the main menu, select **Pay by Link** to create a new payment link. Enter the amount, customer information, order reference, and expiration period. Share the link with your customer so they can complete payment remotely.

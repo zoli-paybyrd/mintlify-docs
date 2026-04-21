@@ -1,0 +1,45 @@
+---
+title: "Request IDs, idempotency keys, and safe retries"
+description: "Use the RequestId response header to trace calls with support, and idempotency keys to retry POST requests without risking duplicate operations."
+---
+
+Every API call you make to Paybyrd produces two pieces of metadata you should know about: a `RequestId` that uniquely identifies the call on Paybyrd's side, and optional idempotency keys that let you safely retry requests after network failures.
+
+## Request IDs
+
+Every response from the Paybyrd API includes a `RequestId` header. This value uniquely identifies your request within Paybyrd's infrastructure. If you contact support about a specific transaction or unexpected behavior, include the `RequestId` so the support team can locate the exact call immediately.
+
+You don't need to send anything special to receive a `RequestId` — Paybyrd adds it to every response automatically.
+
+## Idempotency keys
+
+Network failures happen. If you send a payment request and the connection drops before you receive a response, you don't know whether Paybyrd processed the payment or not. Retrying without a safeguard could create a duplicate charge.
+
+Idempotency keys solve this problem. Add an `idempotency-key` header to any `POST` request:
+
+```bash
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'x-api-key: YOUR_API_KEY_HERE' \
+  --header 'idempotency-key: a5ce4eb7-86e9-4569-a722-091d06643201' \
+  --header 'Content-Type: application/json' \
+  --data '{ ... }'
+```
+
+<Tip>
+  Use an idempotency key on every payment POST request. If a network error prevents you from receiving the response, retry with the same key to get the original result without risking a duplicate charge.
+</Tip>
+
+### How idempotency keys work
+
+- Paybyrd records the response (status code and body) from the **first** request for a given key.
+- Any subsequent request with the **same key** returns that recorded response — including error responses.
+- Keys expire after **24 hours**. After expiry, the same key is treated as a brand-new request and Paybyrd processes it fresh.
+
+### Choosing a key value
+
+<Tip>
+  Generate idempotency keys as V4 UUIDs. V4 UUIDs provide sufficient randomness to avoid accidental key collisions across concurrent requests.
+</Tip>
+
+Each logical operation should get its own unique key. If you are retrying the same operation, reuse the same key. If you are creating a new, separate payment, generate a new key.

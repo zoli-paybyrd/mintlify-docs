@@ -1,0 +1,72 @@
+---
+title: "Query a transaction: GET /api/v2/payment/{id}"
+description: "Use GET /api/v2/payment/{transactionId} to retrieve the current status, amount, currency, and full details of any payment you have created."
+---
+
+After a payment is processed, you can query its current status and full details at any time — for example, after a customer returns from a redirect, or when reconciling your records. Send a `GET` request with the transaction ID and Paybyrd returns a structured response you can act on immediately.
+
+## When to query a transaction
+
+- **After a redirect** — confirm the outcome of a hosted-form payment before updating your order state.
+- **For reconciliation** — pull transaction details in batch to match payments against your internal records.
+- **On webhook receipt** — verify the payload by fetching the transaction independently from your server.
+
+## Fetch a transaction by ID
+
+Send a `GET` request to `/api/v2/payment/{transactionId}`, replacing `{transactionId}` with the ID you received when the payment was created.
+
+```bash
+curl --request GET \
+  --url https://gateway.paybyrd.com/api/v2/payment/4faa13cd-f6ff-414e-b5bd-b61d1e72e418 \
+  --header 'Accept: application/json' \
+  --header 'x-api-key: YOUR_API_KEY'
+```
+
+<Note>
+  You can find the `transactionId` in the create-payment response body, in any Paybyrd webhook notification, or on the payment detail page in the Paybyrd dashboard under **Payment Id**.
+</Note>
+
+## Response fields
+
+A successful response returns a JSON object. The key fields are described below.
+
+<ResponseField name="transactionId" type="string">
+  Unique identifier for this transaction. Use this ID for all subsequent operations such as capture, refund, or release.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current state of the transaction. See [Common statuses](#common-statuses) below.
+</ResponseField>
+
+<ResponseField name="amount" type="string">
+  The transaction amount as a decimal string (e.g. `"10.00"`).
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Three-letter ISO 4217 currency code (e.g. `"EUR"`).
+</ResponseField>
+
+<ResponseField name="orderRef" type="string">
+  Your own order reference, as supplied when the payment was created. Use this to correlate a Paybyrd transaction with your internal order ID.
+</ResponseField>
+
+<ResponseField name="brand" type="string">
+  The card scheme or payment method used (e.g. `"VISA"`, `"MASTERCARD"`).
+</ResponseField>
+
+## Common statuses
+
+| Status | Meaning |
+|--------|---------|
+| `pending` | The payment has been initiated but not yet processed. |
+| `approved` | The payment was authorised and (where applicable) captured successfully. |
+| `declined` | The payment was refused by the issuer or acquirer. |
+| `captured` | Funds have been captured following a pre-authorisation. |
+| `refunded` | The full captured amount has been returned to the shopper. |
+| `partially_refunded` | A partial amount has been returned to the shopper. |
+| `released` | Reserved funds from a pre-authorisation have been released without capture. |
+| `voided` | The transaction was cancelled before settlement. |
+
+<Tip>
+  If you receive an `approved` status but your own records show no completed order, check the `orderRef` field to identify which internal order the payment belongs to and reconcile accordingly.
+</Tip>

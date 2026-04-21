@@ -1,0 +1,127 @@
+---
+title: "Create a payment: Paybyrd's unified payment API"
+description: "POST /api/v2/payment accepts cards, wallets, bank transfers, and more with a consistent structure. Learn the common fields, two-step flow, and redirect pattern."
+---
+
+Every payment you create goes through one endpoint, regardless of the payment method: `POST https://gateway.paybyrd.com/api/v2/payment`. The request structure stays consistent across all methods, so once you understand the common fields, you can add new payment methods with minimal extra effort.
+
+## Common request fields
+
+All payment requests share the following top-level fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | The payment method category. Use `"Card"` for card payments or `"OnlineTransfer"` for bank transfers and digital wallets. |
+| `amount` | string | The charge amount as a string in `"#.##"` format (e.g. `"8.15"`). |
+| `currency` | string | ISO-4217 alpha currency code (e.g. `"EUR"`). |
+| `orderRef` | string | Your own reference for this payment. Use it to identify the transaction in the Paybyrd dashboard or in your own reconciliation. |
+| `redirectUrl` | string | The URL where the customer lands after completing authentication or bank authorisation. Paybyrd appends `transactionId` as a query parameter so you can look up the final status. |
+
+<Tip>
+  You can configure `redirectUrl` directly on your subscription in the Paybyrd dashboard. When it is set there, you do not need to include it in every request.
+</Tip>
+
+## Two-step payment flow
+
+Most payment methods follow a two-step flow:
+
+<Steps>
+  <Step title="Initialise the payment">
+    Send your `POST /api/v2/payment` request. If the payment requires further action (3D Secure authentication, bank login, or a hosted checkout page), the response contains `code: "BYRD207"` and an `action` object.
+  </Step>
+  <Step title="Redirect the customer">
+    Read `action.url` from the response and redirect the customer to that URL. Paybyrd handles the authentication or authorisation step there.
+  </Step>
+  <Step title="Receive the customer back">
+    After the customer completes the second step, they are sent to your `redirectUrl` with `transactionId` appended. Query that transaction to confirm the final status.
+  </Step>
+</Steps>
+
+The `action` object in a typical response looks like this:
+
+```json
+"action": {
+  "type": "redirect",
+  "url": "https://gateway.paybyrd.com/..."
+}
+```
+
+Always check for `action.url` in the response and redirect the customer there to complete the payment.
+
+## Request examples
+
+The examples below show how consistent the API is across different payment methods.
+
+<CodeGroup>
+
+```bash Card payment
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "Card",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+    "card": {
+      "number": "4200000000000000",
+      "expiration": "02/25",
+      "cvv": "123",
+      "holder": "Peter Parker"
+    }
+  }'
+```
+
+```bash iDEAL payment
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "brand": "ideal",
+    "bankIdentifierCode": "INGBNL2A",
+    "redirectUrl": "https://your-shop-url?orderRef=ABC12345"
+  }'
+```
+
+</CodeGroup>
+
+Both requests go to the same endpoint and return the same `action.url` pattern, even though the underlying payment methods are completely different.
+
+## Sandbox vs production
+
+Use the sandbox environment for testing before going live:
+
+| Environment | Base URL |
+|-------------|----------|
+| Sandbox | `https://gatewaysandbox.paybyrd.com` |
+| Production | `https://gateway.paybyrd.com` |
+
+All requests require your API key in the `x-api-key` header.
+
+## Payment methods
+
+Choose the guide for the payment method you want to accept:
+
+<CardGroup cols={2}>
+  <Card title="Card payments" href="/accept-payments/card">
+    Accept Visa, Mastercard, Amex, and more with built-in 3D Secure handling.
+  </Card>
+  <Card title="Digital wallets" href="/accept-payments/digital-wallets">
+    Integrate Apple Pay, PayPal, MB WAY, and Revolut Pay.
+  </Card>
+  <Card title="Bank transfers and local methods" href="/accept-payments/bank-transfers">
+    Support iDEAL, Multibanco, Multicaixa Express, and SEPA.
+  </Card>
+  <Card title="Buy Now Pay Later" href="/accept-payments/buy-now-pay-later">
+    Offer Klarna and Floa instalment options at checkout.
+  </Card>
+</CardGroup>

@@ -1,0 +1,69 @@
+---
+title: "Trigger in-person payments remotely via the API"
+description: "Initiate a payment on a Paybyrd POS terminal from your backend system using the remote transaction API — no direct cable connection required."
+---
+
+The Paybyrd Remote Transaction feature lets your software initiate a payment on a physical POS terminal over the network, without a direct cable connection between your system and the terminal. Your backend sends a request to the Paybyrd API, and the terminal prompts the customer to present their card to complete the payment.
+
+This is useful for order management systems, custom POS software, or any scenario where the payment trigger originates from a server or application rather than the terminal itself.
+
+## How it works
+
+1. Your system sends a `POST` request to the Paybyrd payment API with `"type": "POS"` and the serial number of the target terminal.
+2. Paybyrd forwards the payment request to that terminal.
+3. The terminal displays the payment prompt and the customer taps or inserts their card.
+4. Paybyrd sends the final transaction result to your webhook endpoint.
+
+## Initiate a remote payment
+
+Use the same Create Payment endpoint as online payments, but set `type` to `"POS"` and include `terminalSerialNumber`.
+
+```bash
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --data '{
+    "type": "POS",
+    "amount": "5.00",
+    "currency": "EUR",
+    "orderRef": "Order12345",
+    "terminalSerialNumber": "1234567890",
+    "isPreAuth": false
+  }'
+```
+
+<Note>
+  Find the terminal's serial number in the device's settings menu.
+</Note>
+
+### Response
+
+A successful request returns HTTP `200` with response code `BYRD201`, indicating that the payment is being processed and the terminal is waiting for the customer:
+
+```json
+{
+  "terminalSerialNumber": "1234567890",
+  "isPreAuth": false,
+  "type": "POS",
+  "currency": "EUR",
+  "orderRef": "Order12345",
+  "code": "BYRD201",
+  "description": "Payment being processed. Waiting for shopper",
+  "transactionId": "b01e1cea-b212-42a2-a825-400784efd158",
+  "amount": "5.00"
+}
+```
+
+Save the `transactionId` from the response — you need it to query the transaction status if required.
+
+## Receive the payment result
+
+The final transaction result is delivered asynchronously. Set up an HTTPS webhook endpoint on your server to receive the Paybyrd payment notification. Paybyrd calls your webhook when the customer completes or declines the payment on the terminal.
+
+<Warning>
+  Your webhook server must be accessible over HTTPS from the public internet. Paybyrd cannot deliver notifications to a local or private network address.
+</Warning>
+
+For full details on the payment API request and response fields, refer to the [Create Payment overview](/accept-payments/overview).

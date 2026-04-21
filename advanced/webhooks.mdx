@@ -1,0 +1,89 @@
+---
+title: "Set up webhooks for payment notifications"
+description: "Register webhook URLs to receive real-time HTTP POST notifications when payment status changes. Covers setup, payload format, retry policy, and enable/disable."
+---
+
+Webhooks let Paybyrd push payment status updates to your server the moment they happen, without you needing to poll the API. When a payment status changes, Paybyrd sends an HTTP POST request to each of your registered webhook URLs with a payload containing the relevant IDs.
+
+## Set up a webhook
+
+<Steps>
+  <Step title="Create an endpoint on your server">
+    Build an HTTP endpoint that accepts POST requests and returns a `200`, `201`, or `202` status code. This is the URL Paybyrd will call when a payment status changes.
+  </Step>
+
+  <Step title="Register the URL with Paybyrd">
+    Call `POST /api/v2/webhooks` with your endpoint URL:
+
+    ```bash
+    curl --location --request POST 'https://gateway.paybyrd.com/api/v2/webhooks' \
+      --header 'X-Api-Key: YOUR_API_KEY_HERE' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+        "url": "https://your-server.example.com/webhook"
+      }'
+    ```
+
+    You can register multiple webhook URLs for the same subscription. Each URL must be unique.
+  </Step>
+
+  <Step title="Handle the incoming payload">
+    Paybyrd sends the following JSON body to your endpoint when a payment status changes:
+
+    ```json
+    {
+      "webhookId": "1642449226",
+      "contextType": "event:paymentStatusChanged",
+      "paymentId": "96b5aa9b-aad8-442f-84bb-c327fdebe53e",
+      "transactionId": "96b5aa9b-aad8-442f-84bb-c327fdebe53e",
+      "orderId": "36a77bfe-7304-4977-8e41-93a88c6e93f3"
+    }
+    ```
+
+    Use the `transactionId` or `orderId` to look up the full transaction details via the Paybyrd API and update your order state accordingly.
+  </Step>
+
+  <Step title="Return a success response">
+    Respond with HTTP `200 OK`, `201 Created`, or `202 Accepted`. Any other status code tells Paybyrd your server failed to handle the notification, triggering the retry policy.
+  </Step>
+</Steps>
+
+<Note>
+  Paybyrd retries failed deliveries up to **12 times**. Make your webhook handler idempotent so duplicate deliveries do not cause duplicate actions in your system.
+</Note>
+
+## Retrieve webhook settings
+
+List all registered webhooks for your subscription:
+
+```bash
+curl --location --request GET 'https://gateway.paybyrd.com/api/v2/webhooks' \
+  --header 'X-Api-Key: YOUR_API_KEY_HERE'
+```
+
+Retrieve a specific webhook by its ID:
+
+```bash
+curl --location --request GET 'https://gateway.paybyrd.com/api/v2/webhooks/{webhookId}' \
+  --header 'X-Api-Key: YOUR_API_KEY_HERE'
+```
+
+<Info>
+  Webhook URL, username, and password are masked in all API responses for security.
+</Info>
+
+## Enable and disable webhooks
+
+Paybyrd does not allow you to delete a webhook, but you can disable one to stop it from receiving notifications:
+
+```bash
+curl --location --request POST 'https://gateway.paybyrd.com/api/v2/webhooks/{webhookId}/disable' \
+  --header 'X-Api-Key: YOUR_API_KEY_HERE'
+```
+
+To re-enable a disabled webhook:
+
+```bash
+curl --location --request POST 'https://gateway.paybyrd.com/api/v2/webhooks/{webhookId}/enable' \
+  --header 'X-Api-Key: YOUR_API_KEY_HERE'
+```

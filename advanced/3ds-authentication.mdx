@@ -1,0 +1,142 @@
+---
+title: "How Paybyrd handles 3D Secure authentication"
+description: "Paybyrd handles 3DS v2 authentication automatically — you create a payment, redirect the customer to action.url, and Paybyrd manages the rest."
+---
+
+3D Secure (3DS) adds an identity-verification step to online card payments. The cardholder confirms their identity with their bank, which shifts fraud liability away from you and satisfies Strong Customer Authentication (SCA) requirements under PSD2. Paybyrd handles the protocol complexity, card-network differences, and redirect management so you only need to follow a straightforward integration flow.
+
+## Why 3DS matters
+
+- **Fraud prevention** — authenticating the cardholder reduces unauthorized card use.
+- **Chargeback protection** — liability for authenticated transactions typically shifts to the card issuer, not you.
+- **Regulatory compliance** — 3DS satisfies SCA requirements in the EU and other regulated markets.
+- **Customer trust** — recognized authentication flows increase confidence and improve conversion.
+
+## Two integration approaches
+
+Paybyrd supports two ways to complete the 3DS challenge. Both start with the same payment creation request; they differ in how you handle the `action.url` in the response.
+
+<Tabs>
+  <Tab title="Simplified setup">
+    Paybyrd hosts the entire authentication page. You redirect the customer to `action.url` and Paybyrd takes care of everything, including the challenge flow and the final redirect back to your site.
+
+    **Best for:** server-rendered apps and any integration where embedding a challenge iframe is not practical.
+  </Tab>
+  <Tab title="SDK setup">
+    You use the `threeDSecure.id` from the payment response to drive authentication inside your own page via the Paybyrd SDK. The customer never leaves your site.
+
+    **Best for:** single-page apps where you want a seamless, in-app experience.
+  </Tab>
+</Tabs>
+
+## Simplified setup
+
+<Steps>
+  <Step title="Create a payment from your backend">
+    Send a `POST /api/v2/payment` request. Include a `redirectUrl` so Paybyrd knows where to send the customer after authentication.
+
+    ```bash
+    curl --request POST \
+      --url https://gateway.paybyrd.com/api/v2/payment \
+      --header 'content-type: application/json' \
+      --header 'x-api-key: YOUR_API_KEY_HERE' \
+      --data '{
+        "type": "card",
+        "isoAmount": 100,
+        "currency": "EUR",
+        "orderRef": "YOUR_REF_CODE_HERE",
+        "redirectUrl": "https://your-shop-url?orderRef=YOUR_REF_CODE_HERE",
+        "card": {
+          "number": "5555341244441115",
+          "expiration": "12/30",
+          "cvv": "893",
+          "holder": "Jane Doe"
+        }
+      }'
+    ```
+
+    <Warning>
+      Always make this request from your server. Sending card data from a browser exposes sensitive cardholder information.
+    </Warning>
+  </Step>
+
+  <Step title="Check the response for a 3DS action">
+    When 3DS is required, Paybyrd returns status code `BYRD207` and an `action.url`:
+
+    ```json
+    {
+      "type": "Card",
+      "currency": "EUR",
+      "orderRef": "YOUR_REF_CODE_HERE",
+      "action": {
+        "type": "redirect",
+        "url": "https://link.paybyrd.com/3ds_yvLu4cxe8"
+      },
+      "code": "BYRD207",
+      "description": "Pending redirect"
+    }
+    ```
+
+    The `BYRD207` code means an additional step — the 3DS challenge — is required before the payment can complete.
+  </Step>
+
+  <Step title="Redirect the customer to action.url">
+    Send the customer's browser to the URL in `action.url`. Paybyrd presents the issuer's authentication challenge on your behalf.
+  </Step>
+
+  <Step title="Receive the customer back at your redirectUrl">
+    After authentication succeeds (or fails), Paybyrd redirects the customer to the `redirectUrl` you provided in step 1. Use the `orderRef` query parameter to look up the order on your side.
+  </Step>
+
+  <Step title="Check the final payment status via webhook">
+    Paybyrd sends a webhook notification when the payment status changes. Query the transaction using the `transactionId` from the webhook payload to confirm the final result.
+  </Step>
+</Steps>
+
+## SDK setup
+
+The SDK setup follows the same payment creation flow, but instead of a simple redirect you use `threeDSecure.id` to drive authentication directly inside your page.
+
+<Steps>
+  <Step title="Create a payment and capture the threeDSecure object">
+    Use the same `POST /api/v2/payment` request as the simplified setup. When 3DS is required, the response includes an extended `threeDSecure` object alongside `action`:
+
+    ```json
+    {
+      "action": {
+        "type": "redirect",
+        "url": "https://link.paybyrd.com/3ds_yvLu4cxe8"
+      },
+      "code": "BYRD207",
+      "requestId": "f2d40ac5-59ed-4528-a4c1-01641fd64bf7",
+      "threeDSecure": {
+        "id": "9e8cf073-c854-4534-97ae-1cea65695efb",
+        "verificationMethod": "ThreeDSecure",
+        "channel": "Browser",
+        "status": "Created"
+      },
+      "transactionId": "77f01ebc-2241-4c5f-8bfd-9cab6c81d74a"
+    }
+    ```
+
+    | Field | Description |
+    |-------|-------------|
+    | `code` | `BYRD207` signals that 3DS authentication is required. |
+    | `action` | Contains the fallback redirect URL if needed. |
+    | `threeDSecure.id` | The identifier you pass to the Paybyrd SDK to initiate the in-page challenge. |
+    | `threeDSecure.status` | `Created` at this stage; updated as authentication progresses. |
+    | `requestId` | Unique identifier for this API request — include it when contacting support. |
+  </Step>
+
+  <Step title="Initialize the Paybyrd SDK with threeDSecure.id">
+    Pass `threeDSecure.id` and `requestId` to the Paybyrd SDK. The SDK renders the issuer challenge inside your page without a full-page redirect, keeping the customer in your app throughout the flow.
+  </Step>
+
+  <Step title="Handle the authentication result">
+    Once the SDK reports the authentication is complete, retrieve the updated transaction status and proceed accordingly. Paybyrd also sends a webhook notification with the final payment status.
+  </Step>
+</Steps>
+
+<Note>
+  The SDK setup requires adding the Paybyrd frontend SDK to your page. Contact your Paybyrd Account Manager for the SDK package and setup instructions.
+</Note>

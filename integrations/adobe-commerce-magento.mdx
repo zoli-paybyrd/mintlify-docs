@@ -1,0 +1,81 @@
+---
+title: "Paybyrd payment extension for Adobe Commerce"
+description: "Install and configure the Paybyrd payment gateway extension on Adobe Commerce (Magento 2) to accept card and alternative payments in your store."
+---
+
+Adobe Commerce—formerly known as Magento—is a flexible, open-source e-commerce platform for building and managing online stores. Paybyrd provides a native Adobe Commerce extension that embeds the Paybyrd payment gateway into your checkout flow, supporting both redirect and embedded (iframe) payment experiences.
+
+## Requirements
+
+Before you install the extension, make sure you have:
+
+- Adobe Commerce (Magento) installed and running in a production or staging environment.
+- A Paybyrd account with both a Test API key and a Live API key.
+- A public domain for your store. Order status updates rely on asynchronous webhook calls, which require a publicly accessible URL.
+
+<Note>
+  The Paybyrd extension supports Magento 2.3.x and the latest 2.4.x versions. Paybyrd actively maintains the extension for the latest Magento releases.
+</Note>
+
+## Get the extension
+
+Contact the Paybyrd support team to receive direct access to the extension package.
+
+## Install the extension
+
+Use Composer to install the extension. Run the following command in your Magento root directory:
+
+```bash
+composer require paybyrd/paymentgateway:1.1.1
+```
+
+After the Composer installation completes, follow the [Adobe Commerce documentation](https://experienceleague.adobe.com/docs/commerce-operations/installation-guide/tutorials/extensions.html) to enable and deploy the extension in your store.
+
+If you ever need to remove the extension, refer to the Adobe Commerce documentation on uninstalling Composer packages.
+
+## Configure the extension
+
+<Steps>
+  <Step title="Open Payment Methods in the admin console">
+    Log in to the Adobe Commerce admin console and navigate to **Stores → Configuration → Sales → Payment Methods**.
+  </Step>
+  <Step title="Open Paybyrd settings">
+    Expand the **Paybyrd Payment Method** section to see all available configuration options.
+  </Step>
+  <Step title="Set your API keys">
+    Enter your credentials:
+
+    | Setting | Description |
+    |---|---|
+    | **API Key** | Your Live API key for production transactions. |
+    | **Test API Key** | Your sandbox API key for testing. |
+    | **Test Mode** | Enable to route all payments through Paybyrd's sandbox using your Test API Key. |
+  </Step>
+  <Step title="Configure the checkout experience">
+    Adjust the remaining options to fit your store:
+
+    | Setting | Description |
+    |---|---|
+    | **Title** | The payment method name displayed to customers. Defaults to the value set by Paybyrd. |
+    | **Instructions** | A brief description of the payment method shown at checkout. |
+    | **Post Payment Redirect URL** | The page customers land on after completing a payment. Defaults to the order confirmation page. |
+    | **Post Checkout Redirect** | Set to **Yes** to redirect customers to a Paybyrd-hosted payment page (recommended). Set to **No** to render the payment form in an iframe within your store. |
+    | **Color settings** | Customize background and font colors so the extension matches your store's branding. |
+  </Step>
+  <Step title="Save and verify webhook IDs">
+    Save your settings. Paybyrd automatically generates a **Webhook ID** and a **Webhook Key**. Magento uses these to receive asynchronous transaction status updates from Paybyrd.
+  </Step>
+</Steps>
+
+## Understand the payment flow
+
+When a customer checks out using Paybyrd, the following sequence takes place:
+
+1. The customer selects the Paybyrd payment method during checkout.
+2. The extension creates an order through the Paybyrd API using your configured API keys.
+3. Depending on your **Post Checkout Redirect** setting, the customer either lands on a Paybyrd-hosted payment page or sees an embedded payment form.
+4. After the customer completes payment, Paybyrd sends a webhook notification to update the order status in Magento.
+
+<Tip>
+  Paybyrd recommends setting **Post Checkout Redirect** to **Yes**. The hosted payment page is optimized for conversion and handles 3DS authentication flows automatically.
+</Tip>

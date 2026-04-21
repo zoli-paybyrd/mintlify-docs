@@ -1,0 +1,209 @@
+---
+title: "Accept card payments with automatic 3D Secure"
+description: "Charge Visa, Mastercard, Amex, and other cards through Paybyrd's API with automatic 3D Secure V2 authentication and a single request to complete the full flow."
+---
+
+Paybyrd handles all the complexity of card payment processing, including 3D Secure authentication. By default, every card transaction triggers the 3D Secure V2 flow. If the card is not enrolled for V2, Paybyrd falls back to 3D Secure V1 automatically — you do not need to write any extra code to support both versions.
+
+<Note>
+  If you are not PCI compliant and need to collect card details in your own form, use Paybyrd's hosted form or card collect solution instead of passing raw card data through your server.
+</Note>
+
+## Request structure
+
+Send a `POST` request to `/api/v2/payment` with `type: "Card"` and a nested `card` object containing the cardholder's details.
+
+### Required fields
+
+<ParamField path="type" type="string" required>
+  Must be `"Card"`.
+</ParamField>
+
+<ParamField path="amount" type="string" required>
+  Charge amount in `"#.##"` format (e.g. `"8.15"`).
+</ParamField>
+
+<ParamField path="currency" type="string" required>
+  ISO-4217 alpha currency code (e.g. `"EUR"`).
+</ParamField>
+
+<ParamField path="orderRef" type="string" required>
+  Your merchant reference for this payment.
+</ParamField>
+
+<ParamField path="card.number" type="string" required>
+  The full card number.
+</ParamField>
+
+<ParamField path="card.expiration" type="string" required>
+  Card expiry date in `"MM/YY"` format.
+</ParamField>
+
+<ParamField path="card.cvv" type="string" required>
+  Card security code (CVV/CVC).
+</ParamField>
+
+<ParamField path="card.holder" type="string" required>
+  Name on the card.
+</ParamField>
+
+### Optional fields
+
+<ParamField path="redirectUrl" type="string">
+  URL where the customer lands after 3DS authentication. Paybyrd appends `transactionId` as a query parameter. Required unless already configured on your subscription.
+</ParamField>
+
+<ParamField path="isPreAuth" type="boolean">
+  Set to `true` to reserve funds without capturing immediately. Defaults to `false`.
+</ParamField>
+
+<ParamField path="threeDSecure.callbackUrl" type="string">
+  Use this instead of `redirectUrl` if you want to handle the 3DS result yourself before deciding whether to complete the payment. See [Handling the 3DS result manually](#handling-the-3ds-result-manually) below.
+</ParamField>
+
+## The 3D Secure flow
+
+Card payments go through three stages:
+
+<Steps>
+  <Step title="Create the payment">
+    POST your card payment request. The API responds with `code: "BYRD207"` and an `action.url`.
+  </Step>
+  <Step title="Redirect the customer for authentication">
+    Send the customer to `action.url`. Paybyrd presents the 3D Secure challenge from the card issuer there.
+  </Step>
+  <Step title="Payment completes and customer returns">
+    After a successful challenge, Paybyrd processes the payment and redirects the customer to your `redirectUrl` with `transactionId` appended. Query the transaction to confirm the final status.
+  </Step>
+</Steps>
+
+## Request and response examples
+
+### Standard flow with redirectUrl
+
+Provide `redirectUrl` and let Paybyrd manage the full 3DS flow for you.
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "Card",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+    "card": {
+      "number": "4200000000000000",
+      "expiration": "02/25",
+      "cvv": "123",
+      "holder": "Peter Parker"
+    }
+  }'
+```
+
+```json Response
+{
+  "transactionId": "0e443bff-9052-4eec-a5f1-9db474f2077a",
+  "type": "Card",
+  "currency": "EUR",
+  "orderRef": "ABC12345",
+  "brand": "VISA",
+  "fingerprint": "b53b68c8-43af-4acc-bc79-e892dd6a9a38",
+  "amount": "8.15",
+  "isPreAuth": false,
+  "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+  "action": {
+    "type": "redirect",
+    "url": "https://link-s.paybyrd.com/3ds_Q44clBT77"
+  },
+  "card": {
+    "number": "420000******0000",
+    "expiration": "12/25",
+    "cvv": "***",
+    "holder": "Peter Parker"
+  },
+  "code": "BYRD207",
+  "description": "Pending redirect"
+}
+```
+
+</CodeGroup>
+
+Redirect the customer to `action.url`. After the 3DS challenge, they return to `redirectUrl?transactionId=0e443bff-...`.
+
+## Handling the 3DS result manually
+
+If you need full control over the authentication result — for example, to run your own anti-fraud checks before completing the payment — use `threeDSecure.callbackUrl` instead of `redirectUrl`.
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "Card",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "card": {
+      "number": "4200000000000000",
+      "expiration": "02/25",
+      "cvv": "123",
+      "holder": "Peter Parker"
+    },
+    "threeDSecure": {
+      "callbackUrl": "https://your-threedsresult-handle-url.com"
+    }
+  }'
+```
+
+```json Response
+{
+  "transactionId": "0e443bff-9052-4eec-a5f1-9db474f2077a",
+  "type": "Card",
+  "currency": "EUR",
+  "orderRef": "ABC12345",
+  "brand": "VISA",
+  "amount": "8.15",
+  "isPreAuth": false,
+  "action": {
+    "type": "redirect",
+    "url": "https://link-s.paybyrd.com/3ds_Q44clBT77"
+  },
+  "card": {
+    "number": "420000******0000",
+    "expiration": "12/25",
+    "cvv": "***",
+    "holder": "Peter Parker"
+  },
+  "threeDSecure": {
+    "callbackUrl": "https://your-threedsresult-handle-url.com"
+  },
+  "code": "BYRD207",
+  "description": "Pending redirect"
+}
+```
+
+</CodeGroup>
+
+After the customer completes the 3DS challenge, Paybyrd calls your `callbackUrl` with a `threedSecureResult` query parameter encoded in Base64. Decode it to inspect the authentication outcome, then decide whether to call the payment completion endpoint.
+
+The decoded payload contains a `status` field with one of three values:
+
+| Status | Meaning |
+|--------|---------|
+| `Authorized` | Authentication succeeded. Safe to proceed with payment completion. |
+| `Unauthorized` | Authentication was declined. Do not complete the payment. |
+| `NotEnrolled` | The card is not enrolled in 3D Secure. The transaction may still proceed depending on your risk settings. |
+
+<Warning>
+  Skipping 3D Secure by sending `verificationMethod: "None"` is not recommended. Most card issuers will decline transactions that bypass strong customer authentication.
+</Warning>

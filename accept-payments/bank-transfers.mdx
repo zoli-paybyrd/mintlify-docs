@@ -1,0 +1,241 @@
+---
+title: "Accept iDEAL, SEPA, Multibanco, and bank transfers"
+description: "Add iDEAL, Multibanco, Multicaixa Express, and SEPA Direct Debit to your checkout using Paybyrd's unified payment API and consistent request patterns."
+---
+
+Paybyrd supports several bank transfer and local payment methods across Europe and Africa. Each method follows the same API structure: send a `POST /api/v2/payment` request with `type: "OnlineTransfer"` and a `brand` that identifies the specific method. Most of these are asynchronous — the transaction stays in a `Processing` state until the customer completes or declines the payment.
+
+<Tabs>
+  <Tab title="iDEAL">
+
+iDEAL lets Dutch consumers pay directly from their online banking account. When a customer selects iDEAL, Paybyrd redirects them to their bank's login page. After they authenticate and approve the payment, they return to your site.
+
+### Supported banks
+
+| Bank code | Bank name |
+|-----------|-----------|
+| `ABNANL2A` | ABN AMRO |
+| `ASNBNL21` | ASN Bank |
+| `BUNQNL2A` | bunq |
+| `FVLBNL22` | Van Lanschot |
+| `HANDNL2A` | Handelsbanken |
+| `INGBNL2A` | ING |
+| `KNABNL2H` | Knab |
+| `RABONL2U` | Rabobank |
+| `RBRBNL21` | RegioBank |
+| `REVOLT21` | Revolut |
+| `SNSBNL2A` | SNS Bank |
+| `TRIONL2U` | Triodos Bank |
+
+### Create an iDEAL payment
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "amount": "10.00",
+    "currency": "EUR",
+    "brand": "ideal",
+    "bankIdentifierCode": "INGBNL2A"
+  }'
+```
+
+```json Response
+{
+  "bankIdentifierCode": "INGBNL2A",
+  "type": "OnlineTransfer",
+  "currency": "EUR",
+  "brand": "ideal",
+  "action": {
+    "type": "redirect",
+    "url": "https://redirect.paybyrd.com/api/v1/redirect/58d75973-87e3-4da7-b8f4-ab2bfb3ea9da"
+  },
+  "code": "BYRD207",
+  "description": "Pending redirect",
+  "transactionId": "58d75973-87e3-4da7-b8f4-ab2bfb3ea9da",
+  "amount": "10.00"
+}
+```
+
+</CodeGroup>
+
+Redirect the customer to `action.url`. They log in to their bank, approve the payment, and return to your `redirectUrl`. A successful initialisation returns `code: "BYRD207"`.
+
+  </Tab>
+  <Tab title="Multibanco">
+
+Multibanco is the most popular payment method in Portugal. When you create a Multibanco payment, you receive a payment reference that the customer uses to pay at any ATM or through online banking. The transaction stays in `Processing` until Multibanco notifies Paybyrd of the outcome.
+
+<Warning>
+  Multibanco payments expire after **7 days**. If the customer does not pay within that window, the transaction fails.
+</Warning>
+
+### Create a Multibanco payment
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "brand": "Sibs_Multibanco",
+    "redirectUrl": "https://your-shop-url?orderRef=ABC12345"
+  }'
+```
+
+```json Response
+{
+  "multibanco": {
+    "serviceSupplierId": "11854",
+    "paymentReference": "999999935",
+    "waitForNotification": "1",
+    "redirectOptional": "1"
+  },
+  "type": "OnlineTransfer",
+  "currency": "EUR",
+  "orderRef": "ABC12345",
+  "brand": "Sibs_Multibanco",
+  "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+  "code": "BYRD207",
+  "description": "Pending redirect",
+  "transactionId": "39824983-4a13-42d4-8e85-e2821e494975",
+  "amount": "8.15",
+  "action": {
+    "type": "redirect",
+    "url": "https://gateway.paybyrd.com/api/v1/Redirect/39824983-4a13-42d4-8e85-e2821e494975"
+  }
+}
+```
+
+</CodeGroup>
+
+Display the `multibanco.paymentReference` and `multibanco.serviceSupplierId` from the response to your customer — they need these values to complete the payment at an ATM or through online banking. A successful initialisation returns `code: "BYRD207"`.
+
+  </Tab>
+  <Tab title="Multicaixa Express">
+
+Multicaixa Express is an interbank mobile payment method available exclusively in Angola. Customers authorise payments within 90 seconds directly from the Multicaixa Express app, making it fast and well-suited for mobile checkouts.
+
+<Info>
+  Multicaixa Express is only available in Angola.
+</Info>
+
+The transaction is asynchronous. Once the customer approves the payment in their app, the Multicaixa Express system notifies Paybyrd and the status updates to success or failed.
+
+### Create a Multicaixa Express payment
+
+You can create a Multicaixa Express payment either via the direct payment endpoint or via the Orders API.
+
+<CodeGroup>
+
+```bash Payment endpoint
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "amount": "100.00",
+    "currency": "EUR",
+    "brand": "MULTICAIXAEXPRESS",
+    "phoneNumber": "351#900000000"
+  }'
+```
+
+```bash Orders endpoint
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/orders \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "orderRef": "MULTICAIXAEXPRESS",
+    "isoAmount": 30010,
+    "currency": "EUR",
+    "marketId": "PT",
+    "orderOptions": {
+      "culture": "pt-PT"
+    },
+    "paymentOptions": {
+      "allowedPaymentMethods": [
+        "MULTICAIXAEXPRESS"
+      ]
+    },
+    "shopper": {
+      "firstName": "Peter",
+      "lastName": "Parker",
+      "email": "[email protected]"
+    }
+  }'
+```
+
+</CodeGroup>
+
+For the direct payment endpoint, the customer receives a push notification on their Multicaixa Express app and has 90 seconds to approve the payment.
+
+  </Tab>
+  <Tab title="SEPA">
+
+SEPA Direct Debit lets you debit any EUR-denominated bank account within the SEPA region. The customer provides their IBAN and accepts a mandate that authorises you to debit their account. Paybyrd generates this mandate on your behalf.
+
+<Warning>
+  SEPA Direct Debit is a delayed notification method. Confirmation of success or failure can take up to **14 business days** after initiation. The average is **5 business days**.
+</Warning>
+
+### Create a SEPA payment
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "amount": "10.00",
+    "currency": "EUR",
+    "brand": "SEPA",
+    "iban": "PT55003506519623339578249",
+    "email": "[email protected]",
+    "country": "PRT"
+  }'
+```
+
+```json Response
+{
+  "type": "OnlineTransfer",
+  "currency": "EUR",
+  "brand": "SEPA",
+  "action": {
+    "type": "redirect",
+    "url": "https://redirect.paybyrd.com/api/v1/Redirect/677b2968-41b5-4886-94f6-c77c2d4791bf"
+  },
+  "code": "BYRD207",
+  "description": "Pending redirect",
+  "transactionId": "677b2968-41b5-4886-94f6-c77c2d4791bf",
+  "amount": "10.00"
+}
+```
+
+</CodeGroup>
+
+Redirect the customer to `action.url` so they can review and sign the debit mandate. A successful initialisation returns `code: "BYRD207"`, which means Paybyrd has received the request and will proceed once the customer accepts the debit.
+
+  </Tab>
+</Tabs>

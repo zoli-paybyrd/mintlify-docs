@@ -1,0 +1,139 @@
+---
+title: "Capture or release a pre-authorised payment"
+description: "Capture reserved funds to complete a pre-authorised payment, adjust the reserved amount, or release funds back to the shopper if the order is cancelled."
+---
+
+A pre-authorisation lets you reserve funds on a shopper's card without immediately transferring them. This is useful when the final order amount is uncertain — for example, hotel check-ins, car rentals, or multi-item orders that ship separately. Once you know the final amount, you capture the funds. If the order is cancelled, you release them.
+
+## Pre-authorisation workflow
+
+<Steps>
+  <Step title="Create a pre-authorised payment">
+    Include `"isPreAuth": true` in the body of your create-payment request. Paybyrd authorises the card and reserves the requested amount, but does not move funds.
+  </Step>
+  <Step title="Capture or release">
+    When you are ready to fulfil the order, capture the full or partial amount. If the order is cancelled before capture, release the reserved funds so they are returned to the shopper promptly.
+  </Step>
+</Steps>
+
+<Info>
+  By default, if you neither capture nor release a pre-authorisation, the reserved amount is automatically released after 30 days.
+</Info>
+
+## Capture and release examples
+
+<Tabs>
+  <Tab title="Capture">
+    POST to `/api/v2/capture/{transactionId}` to transfer the reserved funds.
+
+    You can capture the full reserved amount or a partial amount. Pass the exact amount to capture in the request body.
+
+    **Request**
+
+    ```bash
+    curl --request POST \
+      --url https://gateway.paybyrd.com/api/v2/capture/4faa13cd-f6ff-414e-b5bd-b61d1e72e418 \
+      --header 'Accept: application/json' \
+      --header 'Content-Type: application/json' \
+      --header 'x-api-key: YOUR_API_KEY' \
+      --data '{"amount": "10.00"}'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "sourceTransaction": {
+        "capturedAmount": "10.00",
+        "remainingAmount": "0.00",
+        "transactionId": "4faa13cd-f6ff-414e-b5bd-b61d1e72e418",
+        "amount": "10.00"
+      },
+      "code": "BYRD200",
+      "description": "Operation successfully completed",
+      "transactionId": "c16ce479-319d-4e7b-a966-7735c34b2cc5",
+      "amount": "10.00"
+    }
+    ```
+
+    | Response field | Description |
+    |----------------|-------------|
+    | `sourceTransaction.capturedAmount` | The amount captured in this request. |
+    | `sourceTransaction.remainingAmount` | The remaining uncaptured balance on the original pre-auth. |
+    | `sourceTransaction.transactionId` | The ID of the original pre-authorised transaction. |
+    | `transactionId` | The ID of the newly created capture transaction. |
+    | `code` | `BYRD200` indicates success. |
+  </Tab>
+  <Tab title="Release">
+    POST to `/api/v2/release/transactionId/{transactionId}` to release reserved funds back to the shopper.
+
+    <Warning>
+      You can only release a pre-authorisation that has not yet been captured. Attempting to release an already-captured transaction will return an error.
+    </Warning>
+
+    **Request**
+
+    ```bash
+    curl --request POST \
+      --url https://gateway.paybyrd.com/api/v2/release/transactionId/4faa13cd-f6ff-414e-b5bd-b61d1e72e418 \
+      --header 'Accept: application/json' \
+      --header 'Content-Type: application/json' \
+      --header 'x-api-key: YOUR_API_KEY' \
+      --data '{"amount": "10.00"}'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "sourceTransaction": {
+        "releasedAmount": "10.00",
+        "remainingAmount": "0.00",
+        "transactionId": "4faa13cd-f6ff-414e-b5bd-b61d1e72e418",
+        "amount": "10.00"
+      },
+      "code": "BYRD200",
+      "description": "Operation successfully completed",
+      "transactionId": "c16ce479-319d-4e7b-a966-7735c34b2cc5",
+      "amount": "10.00"
+    }
+    ```
+
+    | Response field | Description |
+    |----------------|-------------|
+    | `sourceTransaction.releasedAmount` | The amount released in this request. |
+    | `sourceTransaction.remainingAmount` | The remaining unreleased balance on the original pre-auth. |
+    | `sourceTransaction.transactionId` | The ID of the original pre-authorised transaction. |
+    | `transactionId` | The ID of the newly created release transaction. |
+    | `code` | `BYRD200` indicates success. |
+  </Tab>
+</Tabs>
+
+## Adjust a pre-authorisation
+
+If the final order amount is higher than the original pre-auth — for example, a customer extends a rental or adds items — you can increase the reserved amount before capturing, using the adjust endpoint.
+
+POST to `/api/v2/adjust/{transactionId}` and pass the **additional** amount to add in the request body.
+
+```bash
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/adjust/4faa13cd-f6ff-414e-b5bd-b61d1e72e418 \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: YOUR_API_KEY' \
+  --data '{"amount": "5.00"}'
+```
+
+```json
+{
+  "code": "BYRD200",
+  "description": "Operation successfully completed",
+  "transactionId": "c16ce479-319d-4e7b-a966-7735c34b2cc5",
+  "amount": "15.00",
+  "previousAmount": "10.00"
+}
+```
+
+<Note>
+  The `amount` in the adjust request body is the **additional** amount to reserve, not the new total. In the example above, the original pre-auth was `10.00` and the adjustment adds `5.00`, bringing the new total to `15.00` (shown in `amount` on the response).
+</Note>

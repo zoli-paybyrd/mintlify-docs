@@ -1,0 +1,69 @@
+---
+title: "Accept payments on WooCommerce with Paybyrd"
+description: "Install and configure the Paybyrd WooCommerce plugin to add secure card and alternative payment processing to your WordPress store in minutes."
+---
+
+WooCommerce turns your WordPress website into a fully functional online store. The Paybyrd WooCommerce plugin connects the Paybyrd payment gateway directly to your checkout, so your customers can pay securely without leaving your store.
+
+## Requirements
+
+Before you install the plugin, make sure you have:
+
+- WooCommerce installed and configured on your WordPress site.
+- A Paybyrd account with both a Test API key and a Live API key.
+
+<Warning>
+  Your WordPress server must have a publicly exposed URL. Order status updates rely on asynchronous webhook notifications from Paybyrd, and those webhooks cannot reach a server that is only accessible on a local or private network.
+</Warning>
+
+## Install the plugin
+
+<Steps>
+  <Step title="Open your WordPress admin panel">
+    Log in to your WordPress admin page and go to **Plugins** in the left-hand menu.
+  </Step>
+  <Step title="Search for Paybyrd">
+    Select **Add New Plugin**, then search for **Paybyrd**.
+  </Step>
+  <Step title="Install and activate">
+    Select **Install Now** next to the Paybyrd plugin. Once the installation finishes, select **Activate** to make the plugin available.
+  </Step>
+</Steps>
+
+## Configure the plugin
+
+<Steps>
+  <Step title="Open Payment settings">
+    In the WordPress admin panel, navigate to **WooCommerce → Settings → Payments**.
+
+    <Note>
+      The Paybyrd plugin appears in this list only when it is correctly installed and activated. If you do not see it, check the plugin's activation status under **Plugins**.
+    </Note>
+  </Step>
+  <Step title="Open Paybyrd settings">
+    Find **Paybyrd** in the payments list and select **Manage**.
+  </Step>
+  <Step title="Configure your options">
+    Set the following fields:
+
+    | Setting | Description |
+    |---|---|
+    | **Title** | The payment method name your customers see at checkout. |
+    | **Description** | A short message shown alongside the payment method at checkout. |
+    | **Paid order status** | The order status set after a successful payment. Choose **Processing** if you have fulfillment steps such as shipping, or **Completed** if the order is immediately fulfilled. |
+    | **Test Mode** | Enable this to use Paybyrd's sandbox environment. When active, all transactions use your Test Private Key. |
+    | **Test Private Key** | Your sandbox API key. Used when Test Mode is enabled. |
+    | **Live Private Key** | Your production API key. Used when Test Mode is disabled. |
+  </Step>
+  <Step title="Save and verify webhook IDs">
+    Save your settings. Paybyrd automatically generates a **Webhook ID** and a **Webhook Test ID**. WooCommerce uses these IDs to receive real-time status updates when Paybyrd processes a payment.
+  </Step>
+</Steps>
+
+## Test your integration
+
+Enable **Test Mode** and use your **Test Private Key** to run payments through Paybyrd's sandbox. No real money changes hands during testing. When you are ready to go live, disable Test Mode and make sure your **Live Private Key** is set.
+
+<Tip>
+  Use a staging site with a publicly exposed URL for testing so that webhook notifications arrive correctly and order statuses update as expected.
+</Tip>

@@ -1,0 +1,263 @@
+---
+title: "Embed a PCI-compliant card form with Card Collect"
+description: "Use the Card Collect JavaScript widget to add secure, customisable card fields to your checkout — without handling raw card data on your servers."
+---
+
+Card Collect is a JavaScript widget that renders card input fields inside your own checkout page as isolated, PCI-compliant iframes. Your application never touches the raw card data; instead, Card Collect exchanges it for a short-lived `tokenId` that you pass to the Paybyrd payment API.
+
+## Installation
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install @paybyrd/card-collect
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add @paybyrd/card-collect
+    ```
+  </Tab>
+  <Tab title="Browser (CDN)">
+    Download `dist/cardCollect-web.js` from the `@paybyrd/card-collect` GitHub repository and include it in your HTML file.
+  </Tab>
+</Tabs>
+
+Then import the library in your application:
+
+```javascript
+import CardCollect from "@paybyrd/card-collect";
+```
+
+For browser usage the global function is lowercase:
+
+```javascript
+// Available globally after including cardCollect-web.js
+const form = await cardCollect({ options });
+```
+
+## Initialise the form
+
+Call `CardCollect` with an options object. The call is asynchronous — `await` it before creating fields.
+
+```javascript
+const form = await CardCollect({
+  onStageChanged: (state) => {
+    // Called whenever any field's state changes.
+    // Use `state` to enable or disable your submit button.
+    submitButton.disabled = !state.isValid;
+  },
+});
+```
+
+| Option | Description |
+|--------|-------------|
+| `onStageChanged` | Callback fired whenever the form state changes. Receives a state object describing the current validity of every field. Use it to enable or disable your submit button. |
+
+## Add fields
+
+Call `form.cardCollect_field(options)` once for each card input you want to render. You must include at minimum a `card_number` field and a `card_exp` field.
+
+```javascript
+form.cardCollect_field({
+  id: '#cc-number',
+  type: 'card-number',
+  name: 'card_number',
+  placeholder: 'Card number',
+  showCardIcon: true,
+  validations: ['required', 'validCardNumber'],
+});
+
+form.cardCollect_field({
+  id: '#cc-expiry',
+  type: 'card-expiration-date',
+  name: 'card_exp',
+  placeholder: 'MM / YY',
+  validations: ['required', 'validCardExpirationDate'],
+});
+
+form.cardCollect_field({
+  id: '#cc-cvc',
+  type: 'card-security-code',
+  name: 'card_cvc',
+  placeholder: 'CVC',
+  validations: ['required', 'validCardSecurityCode'],
+});
+```
+
+### Field properties
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `name` | Yes | Field identifier. Use `card_number`, `card_exp`, or a custom name. |
+| `type` | Yes | Input type: `text`, `card-number`, `card-expiration-date`, or `card-security-code`. |
+| `validations` | No | Array of validation rules to apply (see [Validations](#validations)). |
+| `css` | No | CSS style object applied to the field, including pseudo-selectors (see [Styling](#styling)). |
+| `classes` | No | CSS class mapping for field states: `dirty`, `empty`, `focused`, `valid`, `invalid`, `touched`. |
+| `serializers` | No | Data transformation rules applied before submission (see [Data serializers](#data-serializers)). |
+| `showCardIcon` | No | When `true`, displays the detected card brand icon inside the field. |
+| `yearLength` | No | For expiry fields: `'2'` for two-digit year, `'4'` for four-digit year. |
+
+### Validations
+
+| Rule | Description |
+|------|-------------|
+| `required` | The field must not be empty. |
+| `validCardNumber` | Validates the card number using the Luhn algorithm. |
+| `validCardExpirationDate` | Validates date format and checks the date is in the future. |
+| `validCardSecurityCode` | Validates the CVV/CVC value. |
+| Custom RegExp | Pass a regular expression for custom pattern matching. |
+
+## Submit the form
+
+Attach your own submit handler and call `form.cardCollect_submit()` inside it. The method returns a promise that resolves with `{ status, response }`.
+
+```javascript
+const submitButton = document.getElementById("submit-button");
+
+submitButton.onclick = function () {
+  form.cardCollect_submit()
+    .then(({ status, response }) => {
+      console.log(response.tokenId); // Use this in your payment request
+    })
+    .catch((error) => console.error(error));
+};
+```
+
+A successful submission returns:
+
+```json
+{
+  "tokenId": "ecf4a873-59fd-4300-a6e6-330d267ebbb2",
+  "correlationId": "5c9b4c3a-9602-4c4e-9a3d-4e4af8a3d872"
+}
+```
+
+<Note>
+  The `tokenId` from Card Collect is **not** the same as a token from the Tokenization API. It is a short-lived session token — valid for only a few minutes — and is discarded after it is used once. Do not store it or reuse it across requests.
+</Note>
+
+## Use the token in a payment
+
+Pass the `tokenId` in the `card.tokenId` field of your payment request instead of raw card data:
+
+```bash
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <YOUR_API_KEY>' \
+  --data '{
+    "type": "Card",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+    "card": {
+      "tokenId": "ecf4a873-59fd-4300-a6e6-330d267ebbb2"
+    }
+  }'
+```
+
+A successful response looks like:
+
+```json
+{
+  "transactionId": "0e443bff-9052-4eec-a5f1-9db474f2077a",
+  "type": "Card",
+  "currency": "EUR",
+  "orderRef": "ABC12345",
+  "brand": "VISA",
+  "amount": "8.15",
+  "isPreAuth": false,
+  "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+  "action": {
+    "type": "redirect",
+    "url": "https://link-s.paybyrd.com/3ds_Q44clBT77"
+  },
+  "card": {
+    "number": "420000******0000",
+    "expiration": "12/25",
+    "cvv": "***",
+    "holder": "Peter Parker"
+  },
+  "code": "BYRD207",
+  "description": "Pending redirect"
+}
+```
+
+If the response contains an `action.url`, redirect the customer there to complete 3D Secure authentication.
+
+## Styling
+
+Pass a `css` object when creating a field to style it. You can use standard CSS properties, pseudo-selectors (prefixed with `&`), state classes, and `@font-face` declarations.
+
+```javascript
+form.cardCollect_field({
+  id: '#cc-number',
+  type: 'card-number',
+  name: 'card_number',
+  css: {
+    'color': '#1b1d1f',
+    'border': 'solid 1px #1b1d1f',
+    'border-radius': '4px',
+    'padding': '10px',
+    '&:focus': {
+      'border-color': '#11bef5',
+    },
+    '&.invalid.touched': {
+      'color': 'red',
+      'border-color': 'red',
+    },
+    '@font-face': {
+      'font-family': 'MyFont',
+      'src': 'url("/fonts/myfont.woff2") format("woff2")',
+    },
+  },
+});
+```
+
+Use the `classes` property to apply your own CSS classes based on field state:
+
+| State class | When it is applied |
+|-------------|--------------------|
+| `dirty` | The value has changed from its initial state. |
+| `empty` | The field has no value. |
+| `focused` | The field currently has focus. |
+| `valid` | All validations pass. |
+| `invalid` | One or more validations fail. |
+| `touched` | The field has been focused and then blurred. |
+
+## Advanced: Smart CVC
+
+Link the CVC field to the card number field so Card Collect enforces the correct CVC length for each card brand automatically:
+
+```javascript
+const cardNumber = form.cardCollect_field({
+  id: '#cc-number',
+  type: 'card-number',
+  name: 'card_number',
+});
+
+const cvc = form.cardCollect_field({
+  id: '#cc-cvc',
+  type: 'card-security-code',
+  name: 'card_cvc',
+});
+
+cardNumber.setCVCDependency(cvc);
+```
+
+## Advanced: Data serializers
+
+Use serializers to transform field values before Card Collect submits them. Attach them via the `serializers` array in your field options.
+
+| Serializer | Description |
+|------------|-------------|
+| `replace` | Runs a find-and-replace on the field value. |
+| `separate` | Splits the value at a specified delimiter. |
+| `toBase64` | Base64-encodes the field value before submission. |
+
+## Supported card brands
+
+Card Collect detects and validates cards from the following networks: Visa, Mastercard, Amex, Maestro, Discover, Diners Club, JCB, UnionPay, and Elo.

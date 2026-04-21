@@ -1,0 +1,156 @@
+---
+title: "Accept payments with the hosted checkout"
+description: "Redirect customers to Paybyrd's hosted checkout page for a fully PCI-compliant payment experience — no card data touches your servers."
+---
+
+The hosted checkout lets Paybyrd manage the entire payment experience on your behalf. You create an order via the API, redirect your customer to the `checkoutUrl` that comes back in the response, and Paybyrd handles card data collection, 3D Secure authentication, and payment completion. A webhook notifies you when the process is done.
+
+## Integration steps
+
+<Steps>
+  <Step title="Create an order">
+    Send a `POST` request to `/api/v2/orders` with the required fields. Paybyrd returns an order object that includes the `checkoutUrl` your customer should be sent to.
+
+    **Required fields**
+
+    <ParamField path="amount" type="string" required>
+      The payment amount as a decimal string (e.g. `"100.00"`).
+    </ParamField>
+
+    <ParamField path="orderRef" type="string" required>
+      Your internal reference for this order.
+    </ParamField>
+
+    <ParamField path="currency" type="string" required>
+      ISO 4217 currency code (e.g. `"EUR"`).
+    </ParamField>
+
+    <ParamField path="shopper" type="object" required>
+      Customer details.
+
+      <ParamField path="shopper.email" type="string" required>
+        Customer email address.
+      </ParamField>
+
+      <ParamField path="shopper.firstName" type="string" required>
+        Customer first name.
+      </ParamField>
+
+      <ParamField path="shopper.lastName" type="string" required>
+        Customer last name.
+      </ParamField>
+
+      <ParamField path="shopper.phoneCountryCode" type="integer" required>
+        International dialling code (e.g. `351`).
+      </ParamField>
+
+      <ParamField path="shopper.phoneNumber" type="string" required>
+        Customer phone number.
+      </ParamField>
+    </ParamField>
+
+    <ParamField path="orderOptions.redirectUrl" type="string" required>
+      The URL Paybyrd redirects the customer to after the payment flow completes.
+    </ParamField>
+
+    ```bash
+    curl --request POST 'https://gateway.paybyrd.com/api/v2/orders' \
+      --header 'Content-Type: application/json' \
+      --header 'X-Api-Key: <YOUR_API_KEY>' \
+      --data '{
+        "amount": "100.00",
+        "orderRef": "OrderReference",
+        "currency": "EUR",
+        "shopper": {
+          "email": "[email protected]",
+          "firstName": "Dear",
+          "lastName": "Customer",
+          "phoneCountryCode": 351,
+          "phoneNumber": "999888777"
+        },
+        "orderOptions": {
+          "redirectUrl": "https://redirect.url"
+        }
+      }'
+    ```
+
+    The response includes a `checkoutUrl`:
+
+    ```json
+    {
+      "orderDate": "2022-03-08T18:15:52Z",
+      "status": "created",
+      "checkoutUrl": "https://link.paybyrd.com/chk_d1OSV7s2N",
+      "orderId": "5d46449e-d3d8-41ce-af56-5fb74313beb2",
+      "amount": "100.00",
+      "currency": "EUR",
+      "orderRef": "OrderReference",
+      "shopper": {
+        "shopperId": "9de838ff-594a-44eb-baf7-a8dd34ae959d",
+        "email": "m***[email protected]",
+        "firstName": "D**r",
+        "lastName": "C*****r",
+        "phoneCountryCode": "3*1",
+        "phoneNumber": "99*******77",
+        "shippingType": "Undefined"
+      },
+      "orderOptions": {
+        "redirectUrl": "https://redirect.url",
+        "culture": "en-US"
+      },
+      "code": "BYRD200",
+      "description": "Operation successfully completed"
+    }
+    ```
+  </Step>
+
+  <Step title="Redirect the customer">
+    Send your customer to the `checkoutUrl` from the response. Paybyrd's hosted page collects card details, runs 3D Secure authentication, and processes the payment.
+  </Step>
+
+  <Step title="Handle the result">
+    After the payment completes, Paybyrd redirects the customer to your `redirectUrl`. Paybyrd also sends a webhook with the final payment status — use that as your authoritative confirmation.
+  </Step>
+</Steps>
+
+## Save a card for future payments (tokenization)
+
+To save the customer's card during checkout, add a `paymentOptions.tokenOptions.customReference` to your order creation request. Paybyrd displays a consent checkbox on the checkout page so the customer can authorise the tokenization.
+
+Once the payment is approved, you receive a webhook containing the created token. If the webhook does not arrive, you can retrieve the token using the [Tokens API](/advanced/tokenization) with the same `customReference`.
+
+```bash
+curl --request POST 'https://gateway.paybyrd.com/api/v2/orders' \
+  --header 'Content-Type: application/json' \
+  --header 'X-Api-Key: <YOUR_API_KEY>' \
+  --data '{
+    "amount": "100.00",
+    "orderRef": "OrderReference",
+    "currency": "EUR",
+    "shopper": {
+      "email": "[email protected]",
+      "firstName": "Dear",
+      "lastName": "Customer",
+      "phoneCountryCode": 351,
+      "phoneNumber": "999888777"
+    },
+    "orderOptions": {
+      "redirectUrl": "https://redirect.url"
+    },
+    "paymentOptions": {
+      "tokenOptions": {
+        "customReference": "custom_wallet_aggregate"
+      }
+    }
+  }'
+```
+
+## Pay with a saved card
+
+To charge a customer using a previously saved card, include the same `customReference` when creating the order. Paybyrd looks up the associated token and uses it during payment.
+
+<Warning>
+  The `customReference` in the order request must exactly match the `customReference` used when the token was created. A mismatch causes the payment to fail.
+</Warning>
+
+For security, Paybyrd always performs two-factor authentication before charging a saved card. A time-based one-time password (TOTP) is sent to the customer's email address and phone number to prevent fraud.

@@ -1,0 +1,177 @@
+---
+title: "Accept Buy Now Pay Later with Klarna and Floa"
+description: "Offer Klarna and Floa instalment payment options at checkout using Paybyrd's Orders API to increase conversion and average order value."
+---
+
+Buy Now Pay Later (BNPL) lets your customers split purchases into instalments rather than paying the full amount upfront. Paybyrd supports Klarna and Floa through the Orders API (`POST /api/v2/orders`). You create an order with the allowed BNPL payment methods, then redirect the customer to the hosted checkout page to complete their selection and authentication.
+
+<Tabs>
+  <Tab title="Klarna">
+
+Klarna offers three flexible payment options for your customers:
+
+| Plan | Description |
+|------|-------------|
+| **Pay in 30 days** | Customers try their items and pay up to 30 days later. |
+| **Financing** | Customers spread the cost over monthly payments. |
+| **Pay in 3 instalments** | Customers pay in 3 interest-free instalments. |
+
+When the customer selects Klarna at checkout, Paybyrd redirects them to the Klarna-hosted checkout page. After they complete the flow, they return to your `redirectUrl` and the payment status updates.
+
+### Create a Klarna order
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/orders \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "marketId": "PT",
+    "isoAmount": 5000,
+    "orderRef": "Klarna Product Order",
+    "currency": "EUR",
+    "orderOptions": {
+      "redirectUrl": "https://your-shop-url",
+      "culture": "pt-PT"
+    },
+    "shopper": {
+      "email": "[email protected]",
+      "firstName": "Test",
+      "lastName": "Person-pt",
+      "phoneCountryCode": 351,
+      "phoneNumber": "935556731",
+      "shippingAddress": "Avenida Dom João II 40",
+      "shippingPostalCode": "1990-094",
+      "shippingCity": "Lisboa",
+      "shippingState": "LB",
+      "shippingCountry": "PRT",
+      "customReference": "spiderman",
+      "billingAddress": "Avenida Dom João II 40",
+      "billingPostalCode": "1990-094",
+      "billingCity": "Lisboa",
+      "billingCountry": "PRT"
+    },
+    "shoppingCart": {
+      "items": [
+        {
+          "description": "Web launcher",
+          "quantity": 1,
+          "unitPrice": 5000,
+          "amount": 5000,
+          "categories": ["weapons", "launchers"],
+          "shipping": {
+            "shippingMethod": "STD"
+          },
+          "type": "Product"
+        }
+      ]
+    },
+    "paymentOptions": {
+      "allowedPaymentMethods": [
+        "KLARNA"
+      ]
+    }
+  }'
+```
+
+</CodeGroup>
+
+The response contains a `checkoutUrl`. Redirect the customer there to see the Klarna payment options and complete checkout.
+
+<Note>
+  The `isoAmount` field is an integer in the smallest currency unit. For example, `5000` equals €50.00. The `shoppingCart.items` array is required for Klarna and must accurately reflect the order contents.
+</Note>
+
+  </Tab>
+  <Tab title="Floa">
+
+Floa provides flexible BNPL options designed for markets in France, Portugal, Italy, Spain, Belgium, and Germany:
+
+| Plan | Brand code | Description |
+|------|-----------|-------------|
+| **3 instalments** | `FLOA3X` | Pay in 3 equal instalments, each 30 days apart. |
+| **4 instalments** | `FLOA4X` | Pay in 4 equal instalments, each 30 days apart. |
+| **Deferred payment** | `FLOA1XD` | Pay in full, deferred by 1–30 days (France) or 14/30 days (other countries). |
+
+<Info>
+  Floa is only available in France, Portugal, Italy, Spain, Belgium, and Germany.
+</Info>
+
+When the customer selects a Floa plan at checkout, Paybyrd redirects them to the Floa-hosted checkout page. After they complete the flow, they return to your site.
+
+### Create a Floa order
+
+Include all desired Floa plans in `paymentOptions.allowedPaymentMethods` so the customer can choose their preferred instalment option on the Floa checkout page.
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/orders \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "marketId": "PT",
+    "isoAmount": 5000,
+    "orderRef": "New Order",
+    "currency": "EUR",
+    "orderOptions": {
+      "culture": "en-US"
+    },
+    "shopper": {
+      "email": "[email protected]",
+      "firstName": "Peter",
+      "lastName": "Parker",
+      "phoneCountryCode": 351,
+      "phoneNumber": "999999999",
+      "homeAddress": "Rua Rodrigo da Fonseca, 15 - 3H",
+      "homePostalCode": "1250189",
+      "homeCity": "Lisbon",
+      "homeCountry": "PRT",
+      "ipAddress": "192.168.0.1",
+      "firstPurchaseDate": "2023-12-19T19:30:00Z",
+      "lastPurchaseDate": "2023-12-19T19:30:00Z",
+      "shippingAddress": "Av. Guerra Junqueiro 2A",
+      "shippingPostalCode": "1000167",
+      "shippingCity": "Lisbon",
+      "shippingState": "LB",
+      "shippingCountry": "PRT",
+      "customReference": "spiderman"
+    },
+    "shoppingCart": {
+      "items": [
+        {
+          "description": "Web launcher",
+          "amount": 5000,
+          "categories": ["Category 2", "Category 1"],
+          "shipping": {
+            "shippingMethod": "STD"
+          },
+          "type": "Product"
+        }
+      ]
+    },
+    "paymentOptions": {
+      "allowedPaymentMethods": [
+        "FLOA3X",
+        "FLOA4X",
+        "FLOA1XD"
+      ]
+    }
+  }'
+```
+
+</CodeGroup>
+
+The response contains a `checkoutUrl`. Redirect the customer there to see the available Floa instalment plans and complete checkout.
+
+<Note>
+  You can include one or more Floa plan codes in `allowedPaymentMethods`. If you include all three, the customer can choose their preferred plan on the Floa-hosted page.
+</Note>
+
+  </Tab>
+</Tabs>

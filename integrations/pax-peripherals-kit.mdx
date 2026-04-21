@@ -1,0 +1,59 @@
+---
+title: "Access PAX terminal hardware with the peripherals kit"
+description: "Use the Neptune Service and NeptuneLite API to access PAX POS hardware peripherals — printer, camera, card reader, and more — from your own app."
+---
+
+If you are building a custom Android application that runs directly on a PAX POS terminal, you can use the PAX peripherals integration kit to communicate with the terminal's built-in hardware. The kit gives your app access to peripherals such as the printer, card reader, contactless reader, camera, GPS, and speaker through a unified API layer.
+
+The integration kit consists of two components:
+
+- **Neptune Service** — a system application that manages peripheral devices on PAX PayDroid-based terminals.
+- **NeptuneLite API** — a library that exposes the Neptune Service capabilities to your app.
+
+## Neptune Service
+
+Neptune Service acts as the device management layer on PAX terminals. It abstracts the differences between terminal models and hardware configurations, presenting a consistent interface to applications running on the device.
+
+Neptune Service must be installed on the terminal before your application can call any peripheral API. Check whether it is already present on your device. If it is not installed, install it on the terminal before proceeding.
+
+### Supported peripherals
+
+Neptune Service manages access to the following device hardware:
+
+- Printer
+- Magnetic stripe card reader
+- Contactless (NFC) card reader
+- Camera
+- GPS
+- Speaker
+
+## NeptuneLite API
+
+Once Neptune Service is running on the device, add the NeptuneLite API library to your Android project. The library provides the Device Adapter Layer (DAL), which gives your app uniform API calls for all peripheral operations regardless of which PAX terminal model you are targeting.
+
+The DAL hides hardware differences between terminal models, so the same API calls work across the PAX A920, A920 Pro, A77, IM30, and other supported devices.
+
+## Integration steps
+
+<Steps>
+  <Step title="Verify Neptune Service is installed">
+    On the PAX terminal, check that Neptune Service is installed and running. If it is not present, install it on the device before continuing.
+  </Step>
+  <Step title="Add the NeptuneLite API to your project">
+    Include the NeptuneLite API library as a dependency in your Android application. Contact your Paybyrd Account Manager or PAX representative to receive the library package.
+  </Step>
+  <Step title="Initialize the DAL">
+    In your application, initialize the Device Adapter Layer from the NeptuneLite API. The DAL provides the entry point for all peripheral operations.
+  </Step>
+  <Step title="Call peripheral APIs">
+    Use the NeptuneLite API to interact with the hardware peripherals your app needs — for example, trigger a print job, access the camera, or read GPS coordinates.
+  </Step>
+</Steps>
+
+<Note>
+  The NeptuneLite API currently includes the Device Adapter Layer (DAL) module. PAX may add further modules in future releases.
+</Note>
+
+<Tip>
+  If your application also processes payments, combine the PAX peripherals kit with the [Paybyrd Payment SDK for Android](/integrations/payment-sdk-android) to handle both payment operations and peripheral control from a single app.
+</Tip>

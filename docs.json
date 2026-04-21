@@ -1,0 +1,89 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "Paybyrd",
+  "colors": {
+    "primary": "#0057FF"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/zoli-paybyrd/paybyrd-api-docs"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "get-started/credentials",
+              "get-started/sandbox"
+            ]
+          },
+          {
+            "group": "Accept Payments",
+            "pages": [
+              "accept-payments/overview",
+              "accept-payments/card",
+              "accept-payments/digital-wallets",
+              "accept-payments/bank-transfers",
+              "accept-payments/buy-now-pay-later"
+            ]
+          },
+          {
+            "group": "Manage Payments",
+            "pages": [
+              "manage-payments/query-transactions",
+              "manage-payments/capture-and-release",
+              "manage-payments/refunds",
+              "manage-payments/settlements"
+            ]
+          },
+          {
+            "group": "Embed Paybyrd",
+            "pages": [
+              "embed/hosted-checkout",
+              "embed/card-collect",
+              "embed/pay-by-link"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/tokenization",
+              "advanced/3ds-authentication",
+              "advanced/webhooks",
+              "advanced/tracking-requests"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Integrations",
+        "groups": [
+          {
+            "group": "E-commerce",
+            "pages": [
+              "integrations/woocommerce",
+              "integrations/adobe-commerce-magento",
+              "integrations/nopcommerce"
+            ]
+          },
+          {
+            "group": "Point of Sale",
+            "pages": [
+              "integrations/payment-terminals",
+              "integrations/payment-sdk-android",
+              "integrations/remote-transaction",
+              "integrations/pax-peripherals-kit"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

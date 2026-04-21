@@ -1,0 +1,227 @@
+---
+title: "Accept Apple Pay, PayPal, MB WAY, and Revolut Pay"
+description: "Integrate Apple Pay, PayPal, MB WAY, and Revolut Pay through the Paybyrd API so customers can pay with their preferred digital wallet at checkout."
+---
+
+Paybyrd supports several digital wallets through its payments platform. Each wallet follows the same general pattern as other payment methods: send a `POST` request to `/api/v2/payment` (or `/api/v2/orders` for order-based flows), and redirect the customer using the `action.url` in the response.
+
+<Tabs>
+  <Tab title="Apple Pay">
+
+Apple Pay is supported through Paybyrd's payment platform and uses the card payment flow with a token obtained from an Apple Pay session. Contact your Paybyrd Account Manager to enable Apple Pay on your account and to receive integration details specific to your setup.
+
+The general flow is:
+
+<Steps>
+  <Step title="Initialise an Apple Pay session">
+    Use the Apple Pay JS API or PassKit on your front end to present the Apple Pay button and obtain a payment token from Apple.
+  </Step>
+  <Step title="Submit the token via the card payment endpoint">
+    Pass the Apple Pay payment token as the card data in a `POST /api/v2/payment` request with `type: "Card"`. Refer to the [card payments guide](/accept-payments/card) for the full request structure.
+  </Step>
+  <Step title="Handle the response">
+    Check `action.url` in the response and complete the flow according to the card payment redirect pattern.
+  </Step>
+</Steps>
+
+<Note>
+  Apple Pay requires domain verification and a merchant identity certificate. Your Paybyrd Account Manager can guide you through the setup steps.
+</Note>
+
+  </Tab>
+  <Tab title="PayPal">
+
+PayPal is an asynchronous payment method. When you create the payment, the transaction enters a `Processing` status while you wait for the customer to approve it on the PayPal-hosted page. Once the customer approves, PayPal notifies Paybyrd and the payment status updates to success or failed.
+
+<Info>
+  PayPal payments expire after **73 hours**. Refunds are valid for **180 days**.
+</Info>
+
+### Create a PayPal payment
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "amount": "8.15",
+    "currency": "EUR",
+    "orderRef": "ABC12345",
+    "brand": "PAYPAL",
+    "culture": "pt-PT"
+  }'
+```
+
+```json Response
+{
+  "type": "OnlineTransfer",
+  "currency": "EUR",
+  "orderRef": "ABC12345",
+  "brand": "PAYPAL",
+  "redirectUrl": "https://your-shop-url?orderRef=ABC12345",
+  "code": "BYRD207",
+  "description": "Pending redirect",
+  "transactionId": "39824983-4a13-42d4-8e85-e2821e494975",
+  "amount": "8.15",
+  "action": {
+    "type": "redirect",
+    "url": "https://gateway.paybyrd.com/api/v1/Redirect/39824983-4a13-42d4-8e85-e2821e494975"
+  }
+}
+```
+
+</CodeGroup>
+
+Redirect the customer to `action.url`. They will see the PayPal-hosted checkout page to log in and approve the payment. A successful initialisation returns `code: "BYRD207"`.
+
+  </Tab>
+  <Tab title="MB WAY">
+
+MB WAY is an asynchronous payment method. When you create the payment, it enters a `Processing` status. The customer receives a push notification on their MB WAY app and has a limited time to approve it. Once approved, SIBS notifies Paybyrd and the transaction updates to success or failed.
+
+MB WAY is the most widely used digital payment method in Portugal, with over 3.4 million active users.
+
+### Create an MB WAY payment
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/payment \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "type": "OnlineTransfer",
+    "isoAmount": 1000,
+    "currency": "EUR",
+    "orderRef": "ABC123456",
+    "brand": "MBWAY",
+    "phoneCountryCode": "351",
+    "phoneNumber": "969770085",
+    "shopper": {
+      "firstName": "John",
+      "lastName": "Snow",
+      "email": "[email protected]",
+      "shippingAddress": "Rua da Igreja Velha",
+      "shippingPostalCode": "4715-591",
+      "shippingCity": "Braga",
+      "shippingCountry": "PRT",
+      "billingAddress": "Rua da Igreja Velha",
+      "billingPostalCode": "4715-591",
+      "billingCity": "Braga",
+      "billingCountry": "PRT"
+    }
+  }'
+```
+
+```json Response
+{
+  "phoneCountryCode": "351",
+  "phoneNumber": "969770085",
+  "type": "OnlineTransfer",
+  "currency": "EUR",
+  "orderRef": "ABC123456",
+  "brand": "MBWAY",
+  "code": "BYRD201",
+  "description": "Payment being processed. Waiting for shopper",
+  "status": "Processing",
+  "transactionId": "81ebf619-e9e1-49ca-aa9d-5c8cf06a41c6",
+  "amount": "10.00",
+  "isoAmount": 1000,
+  "expiresAt": "2024-08-01T08:40:21.397267Z"
+}
+```
+
+</CodeGroup>
+
+A successful initialisation returns `code: "BYRD201"`. Note that MB WAY uses `isoAmount` (integer, in the smallest currency unit) rather than `amount`.
+
+### Required fields
+
+| Field | Description |
+|-------|-------------|
+| `type` | `"OnlineTransfer"` |
+| `isoAmount` | Amount in ISO format (integer). E.g. `1000` = €10.00 |
+| `currency` | ISO-4217 currency code |
+| `orderRef` | Your merchant reference |
+| `brand` | `"MBWAY"` |
+| `phoneCountryCode` | Country code without symbols (e.g. `"351"`) |
+| `phoneNumber` | Customer's MB WAY phone number |
+
+### Payment notification
+
+When the customer approves or declines the payment in their MB WAY app, Paybyrd sends a webhook to the URL configured in your merchant account:
+
+```json
+{
+  "webhookId": "1642449226",
+  "contextType": "event:paymentStatusChanged",
+  "transactionId": "81ebf619-e9e1-49ca-aa9d-5c8cf06a41c6"
+}
+```
+
+Respond with HTTP `200`, `201`, or `202` to acknowledge receipt. Then query `GET /api/v2/transactions/{transactionId}` to retrieve the final payment status.
+
+  </Tab>
+  <Tab title="Revolut Pay">
+
+Revolut Pay is an asynchronous payment method. The customer is redirected to a Revolut-hosted page to log in and approve the payment. Once approved, Revolut notifies Paybyrd and the transaction status updates.
+
+### Create a Revolut Pay order
+
+Revolut Pay uses the Orders API (`POST /api/v2/orders`) rather than the direct payment endpoint. Set `REVOLUTPAY` in `orderOptions.allowedPaymentMethods`.
+
+<CodeGroup>
+
+```bash Request
+curl --request POST \
+  --url https://gateway.paybyrd.com/api/v2/orders \
+  --header 'Accept: application/json' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: {{YOUR_API_KEY_HERE}}' \
+  --data '{
+    "isoamount": 2510,
+    "orderRef": "Revolut Pay",
+    "currency": "EUR",
+    "shopper": {
+      "email": "[email protected]",
+      "firstName": "Peter",
+      "lastName": "Parker",
+      "phoneCountryCode": 55,
+      "phoneNumber": ""
+    },
+    "orderOptions": {
+      "redirectUrl": "https://www.paybyrd.com",
+      "allowedPaymentMethods": [
+        "REVOLUTPAY"
+      ]
+    }
+  }'
+```
+
+```json Response
+{
+  "orderDate": "2024-12-11T17:40:56Z",
+  "status": "created",
+  "checkoutUrl": "https://link-s.paybyrd.com/chk_Wkjf5Bt8f",
+  "orderId": "e83aa1a1-152c-439e-af1e-fc4178520807",
+  "amount": "25.10",
+  "currency": "EUR",
+  "orderRef": "Revolut Pay",
+  "code": "BYRD200",
+  "description": "Operation successfully completed"
+}
+```
+
+</CodeGroup>
+
+Redirect the customer to `checkoutUrl` from the response. They will see the Revolut Pay-hosted approval page. A successful order creation returns `code: "BYRD200"`.
+
+  </Tab>
+</Tabs>

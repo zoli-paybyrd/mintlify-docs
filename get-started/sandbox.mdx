@@ -1,0 +1,81 @@
+---
+title: "Test your integration with the Paybyrd sandbox"
+description: "Use test API keys and test card numbers to simulate successful payments, declines, 3DS flows, refunds, and errors without touching real funds."
+---
+
+The Paybyrd sandbox lets you build and verify your integration without touching real money or banking networks. You use the same API shape as production — only the API key and, optionally, the base URL differ.
+
+<Warning>
+  Test cards only work with test API keys. They will never charge real funds or interact with real banking networks. Do not use test cards with a live API key.
+</Warning>
+
+## Environments
+
+| Environment | Base URL |
+|---|---|
+| Sandbox (test) | `https://gatewaysandbox.paybyrd.com` |
+| Production (live) | `https://gateway.paybyrd.com` |
+
+Your API key determines which environment a request targets — use your test API key for sandbox and your live API key for production.
+
+## What you can test
+
+The sandbox supports a broad set of scenarios so you can verify your integration end-to-end before going live:
+
+- Successful payments with different card schemes
+- Declined payments for various reasons (insufficient funds, card blocked, etc.)
+- Processing errors caused by unexpected events
+- Capture, refunds, and reversals
+- Different 3D Secure (3DS) authentication outcomes
+
+Paybyrd maintains these test cases without breaking changes. If a test case needs to be removed, it will be deprecated with a sufficient notice period.
+
+## How to use test cards
+
+Use any of the test card numbers below in your API calls. Always pair them with a test API key.
+
+### Server-to-server integration
+
+Pass the card details directly in the `card` object of your payment request:
+
+```bash
+curl --request POST \
+ --url https://gateway.paybyrd.com/api/v2/payment \
+ --header 'Accept: application/json' \
+ --header 'Content-Type: application/json' \
+ --header 'x-api-key: YOUR_TEST_API_KEY' \
+ --data '{
+  "type": "Card",
+  "amount": "8.15",
+  "currency": "EUR",
+  "orderRef": "ABC12345",
+  "card": {
+    "number": "5555341244441115",
+    "expiration": "02/25",
+    "cvv": "123",
+    "holder": "Peter Parker"
+  }
+}'
+```
+
+Replace `YOUR_TEST_API_KEY` with the test API key from your Paybyrd Backoffice.
+
+## Test card numbers
+
+Use the cards below to trigger specific payment outcomes in the sandbox.
+
+| Card number | Scheme | Expiry | CVV | Expected result |
+|---|---|---|---|---|
+| `5555341244441115` | Mastercard | `02/25` | `123` | Successful payment |
+| `4111111111111111` | Visa | `12/26` | `123` | Successful payment |
+| `4000000000000002` | Visa | `12/26` | `123` | Declined — generic decline |
+| `4000000000009995` | Visa | `12/26` | `123` | Declined — insufficient funds |
+| `4000000000000069` | Visa | `12/26` | `123` | Declined — expired card |
+| `4000000000000127` | Visa | `12/26` | `123` | Declined — incorrect CVV |
+| `4000000000000119` | Visa | `12/26` | `123` | Processing error |
+| `4000002760003184` | Visa | `12/26` | `123` | 3DS required — authenticated |
+| `4000008400001629` | Visa | `12/26` | `123` | 3DS required — declined |
+
+<Note>
+  The expiry dates and CVV values shown above are for sandbox use only. Use them exactly as shown to get the expected result.
+</Note>

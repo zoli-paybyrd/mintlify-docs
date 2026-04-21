@@ -1,0 +1,127 @@
+---
+title: "Issue full or partial refunds via the Paybyrd API"
+description: "POST /api/v2/refund/{transactionId} to return captured funds to your shopper. Supports full refunds, partial refunds, and multiple partial refunds."
+---
+
+When you need to return funds to a shopper — whether for a return, cancellation, or customer service resolution — you issue a refund against the original captured transaction. You can refund the full captured amount or a partial amount, and you can make multiple partial refunds as long as their combined total does not exceed what was captured.
+
+<Info>
+  You can only refund a payment after it has been captured. To cancel a pre-authorisation before capture, use the [release endpoint](/manage-payments/capture-and-release) instead.
+</Info>
+
+## Find the transaction ID
+
+Before you can issue a refund, you need the `transactionId` of the captured payment. You can retrieve it from any of these sources:
+
+- **Create-payment response** — the `transactionId` field in the root of the response (server-to-server integrations).
+- **Order query** — query the order by its `orderId` and find the `transactionId` in the `transactions` array.
+- **Webhook notification** — Paybyrd includes the `transactionId` in all payment event notifications.
+- **Dashboard** — open the payment in the Paybyrd dashboard; the identifier is listed as **Payment Id**.
+
+## Refund examples
+
+<Tabs>
+  <Tab title="Full refund">
+    To refund the entire captured amount, pass the full captured amount in the request body.
+
+    **Request**
+
+    ```bash
+    curl --request POST \
+      --url https://gateway.paybyrd.com/api/v2/refund/4faa13cd-f6ff-414e-b5bd-b61d1e72e418 \
+      --header 'Accept: application/json' \
+      --header 'Content-Type: application/json' \
+      --header 'x-api-key: YOUR_API_KEY' \
+      --data '{"amount": "10.00"}'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "sourceTransaction": {
+        "refundedAmount": "10.00",
+        "remainingAmount": "0.00",
+        "transactionId": "4faa13cd-f6ff-414e-b5bd-b61d1e72e418",
+        "amount": "10.00"
+      },
+      "code": "BYRD200",
+      "description": "Operation successfully completed",
+      "transactionId": "c16ce479-319d-4e7b-a966-7735c34b2cc5",
+      "amount": "10.00"
+    }
+    ```
+  </Tab>
+  <Tab title="Partial refund">
+    To refund only part of the captured amount, pass the specific amount you want to return. You can repeat this for multiple partial refunds — for example, refunding individual line items from a multi-product order — as long as the total does not exceed the captured amount.
+
+    **Request**
+
+    ```bash
+    curl --request POST \
+      --url https://gateway.paybyrd.com/api/v2/refund/4faa13cd-f6ff-414e-b5bd-b61d1e72e418 \
+      --header 'Accept: application/json' \
+      --header 'Content-Type: application/json' \
+      --header 'x-api-key: YOUR_API_KEY' \
+      --data '{"amount": "5.00"}'
+    ```
+
+    **Response**
+
+    ```json
+    {
+      "sourceTransaction": {
+        "refundedAmount": "5.00",
+        "remainingAmount": "5.00",
+        "transactionId": "4faa13cd-f6ff-414e-b5bd-b61d1e72e418",
+        "amount": "10.00"
+      },
+      "code": "BYRD200",
+      "description": "Operation successfully completed",
+      "transactionId": "c16ce479-319d-4e7b-a966-7735c34b2cc5",
+      "amount": "5.00"
+    }
+    ```
+
+    The `remainingAmount` field shows how much is still available to refund on the original transaction.
+  </Tab>
+</Tabs>
+
+## Response fields
+
+| Field | Description |
+|-------|-------------|
+| `sourceTransaction.refundedAmount` | The total amount refunded so far on the original transaction (including this request). |
+| `sourceTransaction.remainingAmount` | The amount still available to refund. |
+| `sourceTransaction.transactionId` | The ID of the original captured transaction. |
+| `transactionId` | The ID of the newly created refund transaction. |
+| `code` | `BYRD200` = success. `BYRD205` = declined by the bank (see below). |
+
+## Handling declined refunds
+
+A refund can be declined by the acquiring bank. In that case, Paybyrd responds with code `BYRD205`:
+
+```json
+{
+  "sourceTransaction": {
+    "refundedAmount": "0.00",
+    "remainingAmount": "5.00",
+    "transactionId": "4faa13cd-f6ff-414e-b5bd-b61d1e72e418",
+    "amount": "5.00"
+  },
+  "code": "BYRD205",
+  "description": "Operation rejected",
+  "transactionId": "c16ce479-319d-4e7b-a966-7735c34b2cc5",
+  "amount": "5.00"
+}
+```
+
+`BYRD205` means the bank declined the refund at this time, but the decision may change. You can retry the request later. If you need to understand why a specific refund was declined, contact Paybyrd support.
+
+<Note>
+  Some payment methods do not support partial refunds. Check the documentation for the specific payment method (cards, iDEAL, Klarna, etc.) before attempting a partial refund.
+</Note>
+
+## Refunds before clearing
+
+If you issue a refund before the original transaction has cleared with the acquirer, it is recorded separately in the **Refunds Before Clearing** file — not in the standard settlement file. This means the transaction will not incur the usual settlement fees. See [Settlements](/manage-payments/settlements) for details on how to retrieve both files for accurate reconciliation.
